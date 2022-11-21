@@ -25,7 +25,7 @@ export default function ExecuteButton({
           Execute
         </SpinnerButton>
       </div>
-      {isError && <CommandError label="Error">{error}</CommandError>}
+      {isError && <CommandError label="Error">{error as string}</CommandError>}
     </div>
   );
 }
