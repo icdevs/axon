@@ -1,7 +1,9 @@
 import Array "mo:base/Array";
+import Bool "mo:base/Bool";
 import Debug "mo:base/Debug";
 import Buffer "mo:base/Buffer";
 import Error "mo:base/Error";
+import ExperimentalInternetComputer "mo:base/ExperimentalInternetComputer";
 import Cycles "mo:base/ExperimentalCycles";
 import HashMap "mo:base/HashMap";
 import Iter "mo:base/Iter";
@@ -15,6 +17,8 @@ import Result "mo:base/Result";
 import Time "mo:base/Time";
 import TrieSet "mo:base/TrieSet";
 
+import Admins "admins";
+
 import Arr "./Array";
 import GT "./GovernanceTypes";
 import IC "./IcManagementTypes";
@@ -22,7 +26,7 @@ import T "./Types";
 import Proxy "./Proxy";
 import A "./AxonHelpers";
 
-shared actor class AxonService() = this {
+shared ({ caller = creator }) actor class AxonService() = this {
   // ---- State
 
   stable var axonEntries_pre: [T.AxonEntries_pre] = [];
@@ -43,6 +47,36 @@ shared actor class AxonService() = this {
   // Maximum time in the future that proposals can be created before voting, 7 days
   let MAXIMUM_FUTURE_START = 7 * 24 * 60 * 60;
 
+
+  // ---- Administrator Role
+
+  stable var master : Principal = creator;
+
+  stable var _AdminsUD : ?Admins.UpgradeData = null;
+  let _Admins = Admins.Admins(creator);
+
+  // Returns a boolean indicating if the specified principal is an admin.
+  public query func is_admin(p : Principal) : async Bool {
+    _Admins.isAdmin(p);
+  };
+
+  // Returns a list of all the admins.
+  public query ({ caller }) func get_admins() : async [Principal] {
+    assert (_Admins.isAdmin(caller));
+    _Admins.getAdmins();
+  };
+
+  // Adds the specified principal as an admin.
+  public shared ({ caller }) func add_admin(p : Principal) : async () {
+    assert (_Admins.isAdmin(caller));
+    _Admins.addAdmin(p, caller);
+  };
+
+  // Removes the specified principal as an admin.
+  public shared ({ caller }) func remove_admin(p : Principal) : async () {
+    assert (_Admins.isAdmin(caller));
+    _Admins.removeAdmin(p, caller);
+  };
 
   //---- Public queries
 
@@ -90,7 +124,6 @@ shared actor class AxonService() = this {
       if (b.1 > a.1) { #greater } else { #less }
     });
   };
-
 
   //---- Permissioned queries
 
@@ -174,6 +207,40 @@ shared actor class AxonService() = this {
     }));
   };
 
+  // Get all motion proposals
+  public query({ caller }) func getMotionProposals(id: Nat) : async T.ProposalResult {
+    let { visibility; ledger; allProposals } = axons[id];
+    if (visibility == #Private and not isAuthed(caller, ledger)) {
+      return #err(#Unauthorized)
+    };
+
+    // Filters to only Motion proposals
+    let filtered = Array.filter<T.AxonProposal>(allProposals, func(p) {
+      switch(p.proposal) {
+        case (#AxonCommand((command,_))) {
+          switch (command) {
+            case (#Motion(motion)) {
+              return true;
+            };
+            case _ {
+              return false;
+            };
+          };
+        };
+        case _ {
+          return false
+        };
+      };
+    });
+
+    let size = filtered.size();
+    if (size == 0) {
+      return #ok([]);
+    };
+
+    #ok(filtered);
+  };
+
 
   //---- Updates
 
@@ -185,6 +252,9 @@ shared actor class AxonService() = this {
 
   // Transfer tokens
   public shared({ caller }) func transfer(id: Nat, dest: Principal, amount: Nat) : async T.Result<()> {
+    // Verify if token tranfers are allowed for members in the Axon policy
+    assert tokenTransfersAllowed(id);
+
     let {ledger} = axons[id];
     let balance = Option.get(ledger.get(caller), 0);
     if (amount > balance) {
@@ -198,6 +268,9 @@ shared actor class AxonService() = this {
 
   // Create a new Axon
   public shared({ caller }) func create(init: T.Initialization) : async T.Result<T.AxonPublic> {
+    // Verify that the caller has the Administrator role
+    assert (_Admins.isAdmin(caller));
+
     // Verify at least one ledger entry
     assert(init.ledgerEntries.size() > 0);
 
@@ -252,7 +325,20 @@ shared actor class AxonService() = this {
         };
       };
       case (#AxonCommand((command,_))) {
-        // Can add other ACL logic for axon commands here
+        switch (command) {
+
+          // Make sure burning is allowed per policy before allowing tranfers for it.
+          case (#Burn(burn)) {
+            if (Bool.lognot(axon.policy.allowTokenBurn)) {
+              return #err(#NotAllowedByPolicy);
+            };
+          };
+
+          case _ {}
+        };
+      };
+      case (#CanisterCommand((command,_))) {
+        // could place any checks here if needed.
       };
     };
 
@@ -607,52 +693,6 @@ shared actor class AxonService() = this {
     #ok();
   };
 
-
-  // ---- System functions
-
-  system func preupgrade() {
-    // Persist ledger hashmap entries
-    axonEntries_post := Array.map<T.AxonFull, T.AxonEntries>(Array.freeze(axons), func(axon) {
-      {
-        id = axon.id;
-        proxy = axon.proxy;
-        name = axon.name;
-        visibility = axon.visibility;
-        supply = axon.supply;
-        ledgerEntries = Iter.toArray(axon.ledger.entries());
-        policy = axon.policy;
-        neurons = axon.neurons;
-        totalStake = axon.totalStake;
-        allProposals = axon.allProposals;
-        activeProposals = axon.activeProposals;
-        lastProposalId = axon.lastProposalId;
-      }
-    });
-  };
-
-  system func postupgrade() {
-    // Restore ledger hashmap from entries
-    axons := Array.thaw(Array.map<T.AxonEntries, T.AxonFull>(axonEntries_post, func(axon) {
-      // Remove 0-balance entries
-      let filteredEntries = Array.filter<T.LedgerEntry>(axon.ledgerEntries, func((_, balance)) { balance > 0 });
-      {
-        id = axon.id;
-        proxy = axon.proxy;
-        name = axon.name;
-        visibility = axon.visibility;
-        supply = axon.supply;
-        ledger = HashMap.fromIter<Principal, Nat>(filteredEntries.vals(), filteredEntries.size(), Principal.equal, Principal.hash);
-        policy = axon.policy;
-        neurons = axon.neurons;
-        totalStake = axon.totalStake;
-        allProposals = axon.allProposals;
-        activeProposals = axon.activeProposals;
-        lastProposalId = axon.lastProposalId;
-      }
-    }));
-  };
-
-
   // ---- Internal functions
 
   // Execute accepted proposal
@@ -725,6 +765,10 @@ shared actor class AxonService() = this {
         };
         #AxonCommand((command, ?Result.mapOk<(T.AxonFull, T.AxonCommandExecution), T.AxonCommandExecution, T.Error>(response, func(t) { t.1 })))
       };
+      case (#CanisterCommand((command,_))) {
+        let response = await ExperimentalInternetComputer.call(command.canister, command.functionName, command.argumentBinary);
+        #CanisterCommand((command, ?{reply = response}));
+      }
     };
     // Re-select axon
     let newAxon = Option.get(maybeNewAxon, axons[axonId]);
@@ -803,6 +847,22 @@ shared actor class AxonService() = this {
           lastProposalId = axon.lastProposalId;
         }, #Ok)
       };
+      case (#Motion(motion)) {
+        #ok({
+          id = axon.id;
+          proxy = axon.proxy;
+          name = axon.name;
+          visibility = axon.visibility;
+          supply = axon.supply;
+          ledger = axon.ledger;
+          policy = axon.policy;
+          neurons = axon.neurons;
+          totalStake = axon.totalStake;
+          allProposals = axon.allProposals;
+          activeProposals = axon.activeProposals;
+          lastProposalId = axon.lastProposalId;
+        }, #Ok)
+      };
       case (#AddMembers(principals)) {
         switch (axon.policy.proposers) {
           case (#Closed(current)) {
@@ -822,6 +882,8 @@ shared actor class AxonService() = this {
                 proposers = #Closed(Array.append(current, diff));
                 proposeThreshold = axon.policy.proposeThreshold;
                 acceptanceThreshold = axon.policy.acceptanceThreshold;
+                allowTokenBurn = axon.policy.allowTokenBurn;
+                restrictTokenTransfer = axon.policy.restrictTokenTransfer;
               };
               neurons = axon.neurons;
               totalStake = axon.totalStake;
@@ -857,6 +919,8 @@ shared actor class AxonService() = this {
                 proposers = #Closed(diff);
                 proposeThreshold = axon.policy.proposeThreshold;
                 acceptanceThreshold = axon.policy.acceptanceThreshold;
+                allowTokenBurn = axon.policy.allowTokenBurn;
+                restrictTokenTransfer = axon.policy.restrictTokenTransfer;
               };
               neurons = axon.neurons;
               totalStake = axon.totalStake;
@@ -891,6 +955,8 @@ shared actor class AxonService() = this {
               case (#Absolute(n)) { #Absolute(A.scaleByFraction(n, to, from)) };
               case (p) { p };
             };
+            allowTokenBurn = axon.policy.allowTokenBurn;
+            restrictTokenTransfer = axon.policy.restrictTokenTransfer;
           };
           neurons = axon.neurons;
           totalStake = axon.totalStake;
@@ -903,6 +969,32 @@ shared actor class AxonService() = this {
         let dest = Option.get(recipient, Principal.fromActor(this));
         axon.ledger.put(dest, Option.get(axon.ledger.get(dest), 0) + amount);
         let newSupply = axon.supply + amount;
+        #ok({
+          id = axon.id;
+          proxy = axon.proxy;
+          name = axon.name;
+          visibility = axon.visibility;
+          supply = newSupply;
+          ledger = axon.ledger;
+          policy = axon.policy;
+          neurons = axon.neurons;
+          totalStake = axon.totalStake;
+          allProposals = axon.allProposals;
+          activeProposals = axon.activeProposals;
+          lastProposalId = axon.lastProposalId;
+        }, #SupplyChanged({ from = axon.supply; to = newSupply }))
+      };
+      case (#Burn({amount; owner})) {
+        let current_balance = Option.get(axon.ledger.get(owner), 0);
+        var tokens_removed : Nat = 0;
+        if (Bool.logor(amount == 0, amount > current_balance)) {
+          tokens_removed := Option.get(axon.ledger.get(owner), 0);
+          axon.ledger.put(owner, 0);
+        } else {
+          tokens_removed := amount;
+          axon.ledger.put(owner, Option.get(axon.ledger.get(owner), 0) - amount);
+        };
+        let newSupply : Nat = axon.supply - tokens_removed;
         #ok({
           id = axon.id;
           proxy = axon.proxy;
@@ -951,8 +1043,19 @@ shared actor class AxonService() = this {
 
   // ---- Helpers
 
+  // Returns true if the policy of an axon allows token transfers by members
+  func tokenTransfersAllowed(id : Nat) : Bool {
+    let axon = axons[id];
+
+    if (axon.policy.restrictTokenTransfer) {
+      return false;
+    } else {
+      return true;
+    };
+  };
+
   // Returns true if the principal holds a balance in ledger, OR if it's this canister
-  func isAuthed(principal: Principal, ledger: T.Ledger): Bool {
+  func isAuthed(principal: Principal, ledger: T.Ledger) : Bool {
     principal == Principal.fromActor(this) or
     (switch (ledger.get(principal)) {
       case (?balance) { balance > 0 };
@@ -994,5 +1097,52 @@ shared actor class AxonService() = this {
       error_message = Error.message(e);
       error_type = Error.code(e);
     })
+  };
+
+  // ---- System functions
+
+  system func preupgrade() {
+    // Persist ledger hashmap entries
+    axonEntries_post := Array.map<T.AxonFull, T.AxonEntries>(Array.freeze(axons), func(axon) {
+      {
+        id = axon.id;
+        proxy = axon.proxy;
+        name = axon.name;
+        visibility = axon.visibility;
+        supply = axon.supply;
+        ledgerEntries = Iter.toArray(axon.ledger.entries());
+        policy = axon.policy;
+        neurons = axon.neurons;
+        totalStake = axon.totalStake;
+        allProposals = axon.allProposals;
+        activeProposals = axon.activeProposals;
+        lastProposalId = axon.lastProposalId;
+      }
+    });
+    _AdminsUD := ?_Admins.preupgrade();
+  };
+
+  system func postupgrade() {
+    // Restore ledger hashmap from entries
+    axons := Array.thaw(Array.map<T.AxonEntries, T.AxonFull>(axonEntries_post, func(axon) {
+      // Remove 0-balance entries
+      let filteredEntries = Array.filter<T.LedgerEntry>(axon.ledgerEntries, func((_, balance)) { balance > 0 });
+      {
+        id = axon.id;
+        proxy = axon.proxy;
+        name = axon.name;
+        visibility = axon.visibility;
+        supply = axon.supply;
+        ledger = HashMap.fromIter<Principal, Nat>(filteredEntries.vals(), filteredEntries.size(), Principal.equal, Principal.hash);
+        policy = axon.policy;
+        neurons = axon.neurons;
+        totalStake = axon.totalStake;
+        allProposals = axon.allProposals;
+        activeProposals = axon.activeProposals;
+        lastProposalId = axon.lastProposalId;
+      }
+    }));
+    _Admins.postupgrade(_AdminsUD);
+    _AdminsUD := null;
   };
 };
