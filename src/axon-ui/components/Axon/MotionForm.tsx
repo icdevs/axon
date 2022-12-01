@@ -1,18 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { AxonCommandRequest } from "../../declarations/Axon/Axon.did";
-import { useAxonById } from "../../lib/hooks/Axon/useAxonById";
-import useAxonId from "../../lib/hooks/useAxonId";
 import ErrorAlert from "../Labels/ErrorAlert";
 
 export function MotionForm({
   makeCommand,
-  defaults,
 }: {
   makeCommand: (cmd: AxonCommandRequest | null) => void;
   defaults?: Extract<AxonCommandRequest, { Motion: {} }>["Motion"];
 }) {
-  const axonId = useAxonId();
-  const { data } = useAxonById();
   const [body, setBody] = useState("");
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
