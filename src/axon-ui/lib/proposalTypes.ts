@@ -237,5 +237,9 @@ export const axonCommandToString = (command: AxonCommandRequest) => {
         command.Redenominate.from
       )} to ${formatNumber(command.Redenominate.to)}`;
     }
+    case "Motion": {
+      assert("Motion" in command);
+      return `Motion Proposal to ${command.Motion.title}`;
+    }
   }
 };
