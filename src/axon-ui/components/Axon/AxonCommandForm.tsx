@@ -7,6 +7,7 @@ import { useAxonById } from "../../lib/hooks/Axon/useAxonById";
 import { KeysOfUnion } from "../../lib/types";
 import { AddProposersForm } from "./AddProposersForm";
 import { MintForm } from "./MintForm";
+import { MotionForm } from "./MotionForm";
 import { PolicyFormWithDefaults } from "./PolicyForm";
 import { RedenominateForm } from "./RedenominateForm";
 import { RemoveProposersForm } from "./RemoveProposersForm";
@@ -24,6 +25,7 @@ const commands: [AxonCommandName, string][] = [
   ["Mint", "Mint"],
   ["Transfer", "Transfer"],
   ["Redenominate", "Redenominate"],
+  ["Motion", "Motion Proposal"],
 ];
 
 type AxonCommandName = KeysOfUnion<AxonCommandRequest>;
@@ -127,6 +129,17 @@ export default function AxonCommandForm({
             defaults={
               defaultCommand && "Redenominate" in defaultCommand
                 ? defaultCommand.Redenominate
+                : undefined
+            }
+          />
+        );
+      case "Motion":
+        return (
+          <MotionForm
+            makeCommand={setCommand}
+            defaults={
+              defaultCommand && "Motion" in defaultCommand
+                ? defaultCommand.Motion
                 : undefined
             }
           />
