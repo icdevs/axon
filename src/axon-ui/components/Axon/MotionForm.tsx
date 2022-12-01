@@ -2,8 +2,6 @@ import React, { useEffect, useState } from "react";
 import { AxonCommandRequest } from "../../declarations/Axon/Axon.did";
 import { useAxonById } from "../../lib/hooks/Axon/useAxonById";
 import useAxonId from "../../lib/hooks/useAxonId";
-import useDebounce from "../../lib/hooks/useDebounce";
-import { formatNumber } from "../../lib/utils";
 import ErrorAlert from "../Labels/ErrorAlert";
 
 export function MotionForm({
