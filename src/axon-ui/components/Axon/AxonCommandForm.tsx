@@ -137,11 +137,6 @@ export default function AxonCommandForm({
         return (
           <MotionForm
             makeCommand={setCommand}
-            defaults={
-              defaultCommand && "Motion" in defaultCommand
-                ? defaultCommand.Motion
-                : undefined
-            }
           />
         );
     }

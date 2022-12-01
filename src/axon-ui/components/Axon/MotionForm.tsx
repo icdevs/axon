@@ -1,17 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { AxonCommandRequest } from "../../declarations/Axon/Axon.did";
-import ErrorAlert from "../Labels/ErrorAlert";
 
 export function MotionForm({
   makeCommand,
 }: {
   makeCommand: (cmd: AxonCommandRequest | null) => void;
-  defaults?: Extract<AxonCommandRequest, { Motion: {} }>["Motion"];
 }) {
   const [body, setBody] = useState("");
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
-  const [error, setError] = useState("");
 
   useEffect(() => {
     let command: AxonCommandRequest;
@@ -68,8 +65,6 @@ export function MotionForm({
           required
         />
       </label>
-
-      {!!error && <ErrorAlert>{error}</ErrorAlert>}
     </div>
   );
 }
