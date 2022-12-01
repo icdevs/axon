@@ -132,6 +132,7 @@ export default function AxonCommandForm({
           />
         );
     }
+    return null;
   };
 
   if (!data) {

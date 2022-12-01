@@ -116,6 +116,7 @@ type Proxy =
 type ProposalType = 
  variant {
    AxonCommand: AxonCommand;
+   CanisterCommand: CanisterCommand;
    NeuronCommand: NeuronCommand;
  };
 type ProposalResult = 
@@ -153,11 +154,13 @@ type Proposal =
 type Policy = 
  record {
    acceptanceThreshold: Threshold;
+   allowTokenBurn: bool;
    proposeThreshold: nat;
    proposers: variant {
                 Closed: vec principal;
                 Open;
               };
+   restrictTokenTransfer: bool;
  };
 type Operation = 
  variant {
@@ -255,6 +258,12 @@ type NetworkEconomics =
    reject_cost_e8s: nat64;
    transaction_fee_e8s: nat64;
  };
+type Motion__1 = 
+ record {
+   body: text;
+   title: text;
+   url: text;
+ };
 type Motion = record {motion_text: text;};
 type ManageNeuronResponseOrProposal = 
  variant {
@@ -329,6 +338,7 @@ type Error =
    InsufficientBalanceToPropose;
    InvalidProposal;
    NoNeurons;
+   NotAllowedByPolicy;
    NotFound;
    NotProposer;
    ProposalNotFound;
@@ -394,6 +404,18 @@ type CanisterStatusResult =
              stopping;
            };
  };
+type CanisterCommandResponse = record {reply: blob;};
+type CanisterCommandRequest = 
+ record {
+   argumentBinary: blob;
+   canister: principal;
+   functionName: text;
+ };
+type CanisterCommand = 
+ record {
+   CanisterCommandRequest;
+   opt CanisterCommandResponse;
+ };
 type Ballot__1 = 
  record {
    "principal": principal;
@@ -412,6 +434,7 @@ type Ballot =
  };
 type AxonService = 
  service {
+   add_admin: (principal) -> ();
    axonById: (nat) -> (AxonPublic) query;
    axonStatusById: (nat) -> (CanisterStatusResult);
    balanceOf: (nat, opt principal) -> (nat) query;
@@ -422,15 +445,17 @@ type AxonService =
    execute: (nat, nat) -> (Result_3);
    getActiveProposals: (nat) -> (ProposalResult) query;
    getAllProposals: (nat, opt nat) -> (ProposalResult) query;
+   getMotionProposals: (nat) -> (ProposalResult) query;
    getNeuronIds: (nat) -> (vec nat64) query;
    getNeurons: (nat) -> (NeuronsResult) query;
    getProposalById: (nat, nat) -> (Result_3) query;
+   get_admins: () -> (vec principal) query;
+   is_admin: (principal) -> (bool) query;
    ledger: (nat) -> (vec LedgerEntry) query;
    myAxons: () -> (vec AxonPublic) query;
    propose: (NewProposal) -> (Result_3);
-   sweep: () -> ();
+   remove_admin: (principal) -> ();
    sync: (nat) -> (NeuronsResult);
-   takeControl: () -> ();
    topAxons: () -> (vec AxonPublic) query;
    transfer: (nat, principal, nat) -> (Result);
    vote: (VoteRequest) -> (Result);
@@ -468,10 +493,15 @@ type AxonCommandResponse =
 type AxonCommandRequest = 
  variant {
    AddMembers: vec principal;
+   Burn: record {
+           amount: nat;
+           owner: principal;
+         };
    Mint: record {
            amount: nat;
            recipient: opt principal;
          };
+   Motion: Motion__1;
    Redenominate: record {
                    from: nat;
                    to: nat;

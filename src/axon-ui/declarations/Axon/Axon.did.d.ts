@@ -1,5 +1,7 @@
 import type { Principal } from '@dfinity/principal';
-export interface AccountIdentifier { 'hash' : Array<number> }
+import type { ActorMethod } from '@dfinity/agent';
+
+export interface AccountIdentifier { 'hash' : Uint8Array }
 export type Action = { 'ManageNeuron' : ManageNeuron } |
   { 'ExecuteNnsFunction' : ExecuteNnsFunction } |
   { 'RewardNodeProvider' : RewardNodeProvider } |
@@ -25,12 +27,14 @@ export type AxonCommandExecution = { 'Ok' : null } |
 export type AxonCommandRequest = {
     'Redenominate' : { 'to' : bigint, 'from' : bigint }
   } |
+  { 'Burn' : { 'owner' : Principal, 'amount' : bigint } } |
   { 'Mint' : { 'recipient' : [] | [Principal], 'amount' : bigint } } |
   { 'RemoveMembers' : Array<Principal> } |
   { 'AddMembers' : Array<Principal> } |
   { 'Transfer' : { 'recipient' : Principal, 'amount' : bigint } } |
   { 'SetVisibility' : Visibility } |
-  { 'SetPolicy' : Policy };
+  { 'SetPolicy' : Policy } |
+  { 'Motion' : Motion__1 };
 export type AxonCommandResponse = { 'ok' : AxonCommandExecution } |
   { 'err' : Error };
 export interface AxonProposal {
@@ -56,31 +60,32 @@ export interface AxonPublic {
   'policy' : Policy,
 }
 export interface AxonService {
-  'axonById' : (arg_0: bigint) => Promise<AxonPublic>,
-  'axonStatusById' : (arg_0: bigint) => Promise<CanisterStatusResult>,
-  'balanceOf' : (arg_0: bigint, arg_1: [] | [Principal]) => Promise<bigint>,
-  'cancel' : (arg_0: bigint, arg_1: bigint) => Promise<Result_3>,
-  'cleanup' : (arg_0: bigint) => Promise<Result>,
-  'count' : () => Promise<bigint>,
-  'create' : (arg_0: Initialization) => Promise<Result_4>,
-  'execute' : (arg_0: bigint, arg_1: bigint) => Promise<Result_3>,
-  'getActiveProposals' : (arg_0: bigint) => Promise<ProposalResult>,
-  'getAllProposals' : (arg_0: bigint, arg_1: [] | [bigint]) => Promise<
-      ProposalResult
-    >,
-  'getNeuronIds' : (arg_0: bigint) => Promise<Array<bigint>>,
-  'getNeurons' : (arg_0: bigint) => Promise<NeuronsResult>,
-  'getProposalById' : (arg_0: bigint, arg_1: bigint) => Promise<Result_3>,
-  'ledger' : (arg_0: bigint) => Promise<Array<LedgerEntry>>,
-  'myAxons' : () => Promise<Array<AxonPublic>>,
-  'propose' : (arg_0: NewProposal) => Promise<Result_3>,
-  'sync' : (arg_0: bigint) => Promise<NeuronsResult>,
-  'topAxons' : () => Promise<Array<AxonPublic>>,
-  'transfer' : (arg_0: bigint, arg_1: Principal, arg_2: bigint) => Promise<
-      Result
-    >,
-  'vote' : (arg_0: VoteRequest) => Promise<Result>,
-  'wallet_receive' : () => Promise<bigint>,
+  'add_admin' : ActorMethod<[Principal], undefined>,
+  'axonById' : ActorMethod<[bigint], AxonPublic>,
+  'axonStatusById' : ActorMethod<[bigint], CanisterStatusResult>,
+  'balanceOf' : ActorMethod<[bigint, [] | [Principal]], bigint>,
+  'cancel' : ActorMethod<[bigint, bigint], Result_3>,
+  'cleanup' : ActorMethod<[bigint], Result>,
+  'count' : ActorMethod<[], bigint>,
+  'create' : ActorMethod<[Initialization], Result_4>,
+  'execute' : ActorMethod<[bigint, bigint], Result_3>,
+  'getActiveProposals' : ActorMethod<[bigint], ProposalResult>,
+  'getAllProposals' : ActorMethod<[bigint, [] | [bigint]], ProposalResult>,
+  'getMotionProposals' : ActorMethod<[bigint], ProposalResult>,
+  'getNeuronIds' : ActorMethod<[bigint], BigUint64Array>,
+  'getNeurons' : ActorMethod<[bigint], NeuronsResult>,
+  'getProposalById' : ActorMethod<[bigint, bigint], Result_3>,
+  'get_admins' : ActorMethod<[], Array<Principal>>,
+  'is_admin' : ActorMethod<[Principal], boolean>,
+  'ledger' : ActorMethod<[bigint], Array<LedgerEntry>>,
+  'myAxons' : ActorMethod<[], Array<AxonPublic>>,
+  'propose' : ActorMethod<[NewProposal], Result_3>,
+  'remove_admin' : ActorMethod<[Principal], undefined>,
+  'sync' : ActorMethod<[bigint], NeuronsResult>,
+  'topAxons' : ActorMethod<[], Array<AxonPublic>>,
+  'transfer' : ActorMethod<[bigint, Principal, bigint], Result>,
+  'vote' : ActorMethod<[VoteRequest], Result>,
+  'wallet_receive' : ActorMethod<[], bigint>,
 }
 export interface Ballot { 'vote' : number, 'voting_power' : bigint }
 export interface BallotInfo { 'vote' : number, 'proposal_id' : [] | [NeuronId] }
@@ -89,6 +94,16 @@ export interface Ballot__1 {
   'votingPower' : bigint,
   'vote' : [] | [Vote],
 }
+export type CanisterCommand = [
+  CanisterCommandRequest,
+  [] | [CanisterCommandResponse],
+];
+export interface CanisterCommandRequest {
+  'functionName' : string,
+  'canister' : Principal,
+  'argumentBinary' : Uint8Array,
+}
+export interface CanisterCommandResponse { 'reply' : Uint8Array }
 export interface CanisterStatusResult {
   'status' : { 'stopped' : null } |
     { 'stopping' : null } |
@@ -96,7 +111,7 @@ export interface CanisterStatusResult {
   'memory_size' : bigint,
   'cycles' : bigint,
   'settings' : definite_canister_settings,
-  'module_hash' : [] | [Array<number>],
+  'module_hash' : [] | [Uint8Array],
 }
 export type Change = { 'ToRemove' : NodeProvider } |
   { 'ToAdd' : NodeProvider };
@@ -137,6 +152,7 @@ export type Error = { 'AlreadyVoted' : null } |
   { 'CannotVote' : null } |
   { 'CannotExecute' : null } |
   { 'ProposalNotFound' : null } |
+  { 'NotAllowedByPolicy' : null } |
   { 'InvalidProposal' : null } |
   { 'InsufficientBalance' : null } |
   { 'NotFound' : null } |
@@ -153,7 +169,7 @@ export type ErrorCode = { 'canister_error' : null } |
   { 'system_fatal' : null };
 export interface ExecuteNnsFunction {
   'nns_function' : number,
-  'payload' : Array<number>,
+  'payload' : Uint8Array,
 }
 export interface Follow { 'topic' : number, 'followees' : Array<NeuronId> }
 export interface Followees { 'followees' : Array<NeuronId> }
@@ -184,6 +200,7 @@ export interface ManageNeuronResponse { 'command' : [] | [Command_1] }
 export type ManageNeuronResponseOrProposal = { 'ProposalInfo' : Result_2 } |
   { 'ManageNeuronResponse' : Result_1 };
 export interface Motion { 'motion_text' : string }
+export interface Motion__1 { 'url' : string, 'title' : string, 'body' : string }
 export interface NetworkEconomics {
   'neuron_minimum_stake_e8s' : bigint,
   'max_proposals_to_keep_per_topic' : number,
@@ -205,7 +222,7 @@ export interface Neuron {
   'created_timestamp_seconds' : bigint,
   'aging_since_timestamp_seconds' : bigint,
   'hot_keys' : Array<Principal>,
-  'account' : Array<number>,
+  'account' : Uint8Array,
   'dissolve_state' : [] | [DissolveState],
   'followees' : Array<[number, Followees]>,
   'neuron_fees_e8s' : bigint,
@@ -217,7 +234,7 @@ export type NeuronCommand = [
 ];
 export interface NeuronCommandRequest {
   'command' : Command,
-  'neuronIds' : [] | [Array<bigint>],
+  'neuronIds' : [] | [BigUint64Array],
 }
 export type NeuronCommandResponse = [
   bigint,
@@ -234,11 +251,11 @@ export interface NeuronInfo {
   'age_seconds' : bigint,
 }
 export interface NeuronStakeTransfer {
-  'to_subaccount' : Array<number>,
+  'to_subaccount' : Uint8Array,
   'neuron_stake_e8s' : bigint,
   'from' : [] | [Principal],
   'memo' : bigint,
-  'from_subaccount' : Array<number>,
+  'from_subaccount' : Uint8Array,
   'transfer_timestamp' : bigint,
   'block_height' : bigint,
 }
@@ -263,6 +280,8 @@ export type Operation = { 'RemoveHotKey' : RemoveHotKey } |
   { 'IncreaseDissolveDelay' : IncreaseDissolveDelay } |
   { 'SetDissolveTimestamp' : SetDissolveTimestamp };
 export interface Policy {
+  'restrictTokenTransfer' : boolean,
+  'allowTokenBurn' : boolean,
   'proposeThreshold' : bigint,
   'proposers' : { 'Open' : null } |
     { 'Closed' : Array<Principal> },
@@ -293,10 +312,11 @@ export interface ProposalInfo {
 export type ProposalResult = { 'ok' : Array<AxonProposal> } |
   { 'err' : Error };
 export type ProposalType = { 'NeuronCommand' : NeuronCommand } |
-  { 'AxonCommand' : AxonCommand };
+  { 'AxonCommand' : AxonCommand } |
+  { 'CanisterCommand' : CanisterCommand };
 export interface Proxy {
-  'list_neurons' : () => Promise<ListNeuronsResponse>,
-  'manage_neuron' : (arg_0: ManageNeuron) => Promise<ManageNeuronResponse>,
+  'list_neurons' : ActorMethod<[], ListNeuronsResponse>,
+  'manage_neuron' : ActorMethod<[ManageNeuron], ManageNeuronResponse>,
 }
 export interface RegisterVote { 'vote' : number, 'proposal' : [] | [NeuronId] }
 export interface RemoveHotKey { 'hot_key_to_remove' : [] | [Principal] }
