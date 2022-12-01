@@ -29,7 +29,7 @@ export default function TokenSummary() {
           />
         </div>
         <div>
-          <Link href={`/axon/${axonId}/ledger`}>
+          <Link href={`/axon/${axonId}/ledger`} legacyBehavior>
             <a className="text-xs text-gray-800 hover:underline">
               View Ledger
               <FiChevronRight className="inline ml-0.5 text-gray-500" />

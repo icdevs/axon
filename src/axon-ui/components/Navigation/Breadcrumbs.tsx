@@ -19,7 +19,7 @@ export default function Breadcrumbs({ path }: { path: Path[] }) {
 
   return (
     <div className="flex items-center gap-2 py-4 overflow-hidden">
-      <Link href="/">
+      <Link href="/" legacyBehavior>
         <a
           className={classNames({
             "opacity-50 hover:opacity-100 transition-opacity": path.length > 0,
@@ -36,7 +36,7 @@ export default function Breadcrumbs({ path }: { path: Path[] }) {
               {item.label}
             </span>
           ) : (
-            <Link href={item.url}>
+            <Link href={item.url} legacyBehavior>
               <a className="opacity-50 hover:opacity-100 transition-opacity whitespace-nowrap">
                 {item.label}
               </a>

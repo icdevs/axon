@@ -30,7 +30,7 @@ export default function Nav() {
             />
 
             {id && (
-              <Link href={`/axon/${id}/ledger`}>
+              <Link href={`/axon/${id}/ledger`} legacyBehavior>
                 <a className="text-right hover:underline">
                   <strong>{formatNumber(balance || 0)}</strong> AXON_{id}
                 </a>

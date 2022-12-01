@@ -25,7 +25,7 @@ export default function MyAxons() {
         {data ? (
           <div className="grid xs:grid-cols-2 md:grid-cols-3 grid-cols-1 gap-8 p-4">
             {data.map(({ id, totalStake, tokenHolders, name }) => (
-              <Link key={id.toString()} href={`/axon/${id}`}>
+              <Link key={id.toString()} href={`/axon/${id}`} legacyBehavior>
                 <a className="p-4 bg-gradient-to-br from-green-300 via-blue-500 to-purple-600 rounded-xl text-xl text-white h-48 hover:shadow-xl transition">
                   <h3 className="text-2xl font-bold">{name}</h3>
                   <p>Axon {id.toString()}</p>
