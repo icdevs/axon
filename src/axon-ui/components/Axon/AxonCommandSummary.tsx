@@ -160,4 +160,5 @@ export default function AxonCommandSummary({
       );
     }
   }
+  return null;
 }

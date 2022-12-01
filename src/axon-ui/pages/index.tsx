@@ -19,7 +19,7 @@ export default function Home() {
             <strong>Axon</strong> is a multi-user, multi-neuron management
             canister.
           </span>
-          <Link href="/axon/new">
+          <Link href="/axon/new" legacyBehavior>
             <a className="rounded-md btn-cta px-4 py-2 text-xl inline-flex gap-2 items-center whitespace-nowrap">
               Create Axon <FaArrowRight />
             </a>

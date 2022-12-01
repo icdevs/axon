@@ -71,6 +71,8 @@ export function PolicyFormWithDefaults({
 }
 
 export type DefaultPolicy = {
+  defaultAllowTokenBurn?: boolean;
+  defaultRestrictTokenTransfer?: boolean;
   defaultProposersKey?: ProposersKey;
   defaultProposers?: string[];
   defaultProposeThreshold?: string;
@@ -82,6 +84,8 @@ export type DefaultPolicy = {
 
 export function PolicyForm({
   makeCommand,
+  defaultAllowTokenBurn = false,
+  defaultRestrictTokenTransfer = false,
   defaultProposersKey = "Open",
   defaultProposers = [],
   defaultProposeThreshold = "",
@@ -107,6 +111,12 @@ export function PolicyForm({
   );
   const [acceptanceThreshold, setAcceptanceThreshold] = useState(
     defaultAcceptanceThreshold
+  );
+  const [restrictTokenTransfer, setRestrictTokenTransfer] = useState(
+    defaultRestrictTokenTransfer
+  );
+  const [allowTokenBurn, setAllowTokenBurn] = useState(
+    defaultAllowTokenBurn
   );
   const [quorum, setQuorum] = useState(defaultQuorum);
 
@@ -136,6 +146,8 @@ export function PolicyForm({
     let policy: Policy;
     try {
       policy = {
+        restrictTokenTransfer,
+        allowTokenBurn,
         proposeThreshold: proposeThreshold
           ? BigInt(proposeThreshold)
           : BigInt(0),

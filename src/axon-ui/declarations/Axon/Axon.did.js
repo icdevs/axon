@@ -193,6 +193,8 @@ export const idlFactory = ({ IDL }) => {
     'Absolute' : IDL.Nat,
   });
   const Policy = IDL.Record({
+    'restrictTokenTransfer' : IDL.Bool,
+    'allowTokenBurn' : IDL.Bool,
     'proposeThreshold' : IDL.Nat,
     'proposers' : IDL.Variant({
       'Open' : IDL.Null,
@@ -296,6 +298,7 @@ export const idlFactory = ({ IDL }) => {
     'CannotVote' : IDL.Null,
     'CannotExecute' : IDL.Null,
     'ProposalNotFound' : IDL.Null,
+    'NotAllowedByPolicy' : IDL.Null,
     'InvalidProposal' : IDL.Null,
     'InsufficientBalance' : IDL.Null,
     'NotFound' : IDL.Null,
@@ -319,8 +322,14 @@ export const idlFactory = ({ IDL }) => {
     NeuronCommandRequest,
     IDL.Opt(IDL.Vec(NeuronCommandResponse)),
   );
+  const Motion__1 = IDL.Record({
+    'url' : IDL.Text,
+    'title' : IDL.Text,
+    'body' : IDL.Text,
+  });
   const AxonCommandRequest = IDL.Variant({
     'Redenominate' : IDL.Record({ 'to' : IDL.Nat, 'from' : IDL.Nat }),
+    'Burn' : IDL.Record({ 'owner' : IDL.Principal, 'amount' : IDL.Nat }),
     'Mint' : IDL.Record({
       'recipient' : IDL.Opt(IDL.Principal),
       'amount' : IDL.Nat,
@@ -333,6 +342,7 @@ export const idlFactory = ({ IDL }) => {
     }),
     'SetVisibility' : Visibility,
     'SetPolicy' : Policy,
+    'Motion' : Motion__1,
   });
   const AxonCommandExecution = IDL.Variant({
     'Ok' : IDL.Null,
@@ -351,9 +361,20 @@ export const idlFactory = ({ IDL }) => {
     AxonCommandRequest,
     IDL.Opt(AxonCommandResponse),
   );
+  const CanisterCommandRequest = IDL.Record({
+    'functionName' : IDL.Text,
+    'canister' : IDL.Principal,
+    'argumentBinary' : IDL.Vec(IDL.Nat8),
+  });
+  const CanisterCommandResponse = IDL.Record({ 'reply' : IDL.Vec(IDL.Nat8) });
+  const CanisterCommand = IDL.Tuple(
+    CanisterCommandRequest,
+    IDL.Opt(CanisterCommandResponse),
+  );
   const ProposalType = IDL.Variant({
     'NeuronCommand' : NeuronCommand,
     'AxonCommand' : AxonCommand,
+    'CanisterCommand' : CanisterCommand,
   });
   const AxonProposal = IDL.Record({
     'id' : IDL.Nat,
@@ -398,6 +419,7 @@ export const idlFactory = ({ IDL }) => {
     'proposalId' : IDL.Nat,
   });
   const AxonService = IDL.Service({
+    'add_admin' : IDL.Func([IDL.Principal], [], []),
     'axonById' : IDL.Func([IDL.Nat], [AxonPublic], ['query']),
     'axonStatusById' : IDL.Func([IDL.Nat], [CanisterStatusResult], []),
     'balanceOf' : IDL.Func(
@@ -416,12 +438,16 @@ export const idlFactory = ({ IDL }) => {
         [ProposalResult],
         ['query'],
       ),
+    'getMotionProposals' : IDL.Func([IDL.Nat], [ProposalResult], ['query']),
     'getNeuronIds' : IDL.Func([IDL.Nat], [IDL.Vec(IDL.Nat64)], ['query']),
     'getNeurons' : IDL.Func([IDL.Nat], [NeuronsResult], ['query']),
     'getProposalById' : IDL.Func([IDL.Nat, IDL.Nat], [Result_3], ['query']),
+    'get_admins' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
+    'is_admin' : IDL.Func([IDL.Principal], [IDL.Bool], ['query']),
     'ledger' : IDL.Func([IDL.Nat], [IDL.Vec(LedgerEntry)], ['query']),
     'myAxons' : IDL.Func([], [IDL.Vec(AxonPublic)], ['query']),
     'propose' : IDL.Func([NewProposal], [Result_3], []),
+    'remove_admin' : IDL.Func([IDL.Principal], [], []),
     'sync' : IDL.Func([IDL.Nat], [NeuronsResult], []),
     'topAxons' : IDL.Func([], [IDL.Vec(AxonPublic)], ['query']),
     'transfer' : IDL.Func([IDL.Nat, IDL.Principal, IDL.Nat], [Result], []),

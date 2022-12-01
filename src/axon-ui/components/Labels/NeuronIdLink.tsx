@@ -6,7 +6,7 @@ export const renderNeuronIdLink = (axonId: string) => {
   return ({ rawId, displayId, name }: IdentifierRenderProps) => {
     const display = name ?? displayId;
     return (
-      <Link href={`/axon/${axonId}/neuron/${rawId}`}>
+      <Link href={`/axon/${axonId}/neuron/${rawId}`} legacyBehavior>
         <a className="text-blue-600 font-semibold hover:underline cursor-pointer">
           {display}
         </a>
