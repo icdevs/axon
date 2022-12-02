@@ -41,7 +41,7 @@ export default function NeuronCommandSummary({
   return (
     <div className="flex flex-col gap-2">
       <CommandSummary command={command} />
-      <NeuronIds neuronIds={neuronIds} />
+      <NeuronIds neuronIds={[]} /> // TODO: fix types neuronIds
     </div>
   );
 }

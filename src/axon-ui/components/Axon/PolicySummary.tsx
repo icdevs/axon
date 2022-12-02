@@ -6,7 +6,7 @@ import { DataRow, DataTable } from "../Proposal/DataTable";
 
 export default function PolicySummary({
   label,
-  policy: { proposeThreshold, proposers, acceptanceThreshold },
+  policy: { proposeThreshold, proposers, acceptanceThreshold, restrictTokenTransfer, allowTokenBurn },
 }: {
   label?: string;
   policy: Policy;
@@ -35,27 +35,33 @@ export default function PolicySummary({
       ? formatPercent(Number(acceptanceThreshold.Percent.quorum[0]) / 1e8)
       : null;
     threshold = (
-      <DataRow labelClassName="w-40" label="Acceptance Threshold">
+      <DataRow labelClassName="w-48" label="Acceptance Threshold">
         <div>{percent} of Votes</div>
         {quorum && <div>{quorum} Quorum Required</div>}
       </DataRow>
     );
   } else {
     threshold = (
-      <DataRow labelClassName="w-40" label="Acceptance Threshold">
+      <DataRow labelClassName="w-48" label="Acceptance Threshold">
         {formatNumber(acceptanceThreshold.Absolute)} Total Votes
       </DataRow>
     );
   }
   return (
     <DataTable label={label}>
-      <DataRow labelClassName="w-40" label="Eligible Proposers">
+      <DataRow labelClassName="w-48" label="Eligible Proposers">
         {owners}
       </DataRow>
-      <DataRow labelClassName="w-40" label="Proposer Requirement">
+      <DataRow labelClassName="w-48" label="Proposer Requirement">
         {formatNumber(proposeThreshold)} Tokens
       </DataRow>
       {threshold}
+      <DataRow labelClassName="w-48" label="Restrict Token Transfer">
+        {restrictTokenTransfer.toString()}
+      </DataRow>
+      <DataRow labelClassName="w-48" label="Allow Token Burn">
+        {allowTokenBurn.toString()}
+      </DataRow>
     </DataTable>
   );
 }

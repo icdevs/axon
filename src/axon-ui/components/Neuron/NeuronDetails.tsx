@@ -29,7 +29,7 @@ export default function NeuronDetails({ neuronId }: { neuronId: string }) {
 
   const controller = neuron?.controller[0];
   const account = neuron
-    ? subaccountToAccount(governanceCanister, neuron.account)
+    ? subaccountToAccount(governanceCanister, []) // TODO: fix type for neuron.account
     : null;
 
   const votingPower = neuron ? calculateVotingPower(neuron) / 1e8 : null;
@@ -42,12 +42,12 @@ export default function NeuronDetails({ neuronId }: { neuronId: string }) {
   return (
     <div className="flex flex-col gap-4 xs:gap-8">
       <div className="flex flex-col md:flex-row gap-4 xs:gap-8">
-        <Panel className="flex-1 p-4">
+        <Panel className="flex-1 p-4 custom-panel">
           <label className="text-gray-500 uppercase text-sm">Neuron</label>
           <h2 className="text-xl font-bold">{neuronId}</h2>
         </Panel>
 
-        <Panel className="flex-1 p-4">
+        <Panel className="flex-1 p-4 custom-panel">
           <label className="text-gray-500 uppercase text-sm">Stake</label>
           <h2 className="text-2xl font-bold">
             {neuron && (
@@ -58,7 +58,7 @@ export default function NeuronDetails({ neuronId }: { neuronId: string }) {
           </h2>
         </Panel>
 
-        <Panel className="flex-1 p-4">
+        <Panel className="flex-1 p-4 custom-panel">
           <label className="text-gray-500 uppercase text-sm">Maturity</label>
           {isSpawnable && (
             <label className="ml-2 bg-green-300 text-green-700 px-2 py-0.5 rounded uppercase text-xs">
@@ -70,7 +70,7 @@ export default function NeuronDetails({ neuronId }: { neuronId: string }) {
           </h2>
         </Panel>
 
-        <Panel className="flex-1 p-4">
+        <Panel className="flex-1 p-4 custom-panel">
           <label className="text-gray-500 uppercase text-sm">
             Voting Power
           </label>
@@ -85,7 +85,7 @@ export default function NeuronDetails({ neuronId }: { neuronId: string }) {
         </Panel>
       </div>
 
-      <Panel className="px-6 flex flex-col divide-y divide-gray-200 py-4">
+      <Panel className="px-6 flex flex-col divide-y divide-gray-200 py-4 custom-panel">
         <div className="md:flex leading-tight py-2">
           <div className="w-32 font-bold">Type</div>
           <div>{neuron && <ControllerTypeLabel type={neuron._type} />}</div>

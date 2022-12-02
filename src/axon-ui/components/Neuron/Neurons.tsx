@@ -66,7 +66,7 @@ export default function Neurons() {
   const neuronsByType = groupBy(neurons, "_type");
 
   return (
-    <Panel className="py-4">
+    <Panel className="py-4 custom-panel">
       <div className="px-4 flex justify-between mb-2">
         <div className="flex gap-2 items-center">
           <h2 className="text-xl font-bold">Neurons</h2>

@@ -95,6 +95,47 @@ export default function AxonCommandSummary({
         </DataTable>
       );
     }
+    case "Burn": {
+      assert("Burn" in request);
+      const effects = response[0]
+        ? "ok" in response[0]
+          ? "SupplyChanged" in response[0].ok
+            ? response[0].ok.SupplyChanged
+            : null
+          : null
+        : null;
+      const supplyBefore = effects ? effects.from : data?.supply;
+      const supplyAfter = effects
+        ? effects.to
+        : request.Burn.amount + (data ? data.supply : BigInt(0));
+      const percent = Number(request.Burn.amount) / Number(supplyBefore);
+      return (
+        <DataTable label={`Burn ${formatNumber(request.Burn.amount)} tokens`}>
+          <DataRow labelClassName="w-40" label="Recipient">
+            {request.Burn.owner ? (
+              <IdentifierLabelWithButtons
+                key={request.Burn.owner.toText()}
+                id={request.Burn.owner}
+                type="Principal"
+              />
+            ) : (
+              `${data ? principalName(data.proxy.toText()) : ""} Treasury`
+            )}
+          </DataRow>
+          <DataRow labelClassName="w-40" label="Supply Before">
+            {data && formatNumber(supplyBefore)}
+          </DataRow>
+          <DataRow labelClassName="w-40" label="Supply After">
+            {data && (
+              <>
+                {formatNumber(supplyAfter)} (
+                {formatPercent(percent, 2, "always")})
+              </>
+            )}
+          </DataRow>
+        </DataTable>
+      );
+    }
     case "Transfer": {
       assert("Transfer" in request);
       const effects = response[0]

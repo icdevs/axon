@@ -39,7 +39,7 @@ export default function NnsProposals() {
     useNnsPendingProposals();
 
   return (
-    <Panel>
+    <Panel className="custom-panel">
       <div className="flex gap-2 items-center mb-2">
         <h2 className="text-xl font-bold">Open NNS Proposals</h2>
         <RefreshButton

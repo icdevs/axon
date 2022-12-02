@@ -1,8 +1,7 @@
 import Document, { Head, Html, Main, NextScript } from "next/document";
 
-const fullTitle = "Axon";
-const description = "Neuron management canister";
-const imageUrl = "https://axon.ooo/img/axon-full-logo-bg.svg";
+const fullTitle = "ICDEV Govern";
+const description = "Caniste Govarnance system";
 
 export default class MyDocument extends Document {
   render() {
@@ -10,7 +9,7 @@ export default class MyDocument extends Document {
       <Html>
         <Head>
           <meta name="description" content={fullTitle} />
-          <link rel="icon" href="/img/axon-logo.svg" />
+          <link rel="icon" href="/img/logo.svg" />
           <meta property="og:type" content="website" />
           <meta name="title" content={fullTitle} />
           <meta property="og:title" content={fullTitle} />
@@ -18,11 +17,9 @@ export default class MyDocument extends Document {
 
           <meta name="description" content={description} />
           <meta property="og:description" content={description} />
-          <meta property="og:image" content={imageUrl} />
 
           <meta property="twitter:card" content="summary_large_image" />
           <meta property="twitter:description" content={description} />
-          <meta property="twitter:image" content={imageUrl} />
         </Head>
         <body>
           <Main />

@@ -64,6 +64,9 @@ export const CommandResponseSummary = ({
       summary = <AxonCommandResponseSummary response={response} />;
     }
   } else {
+    if ("CanisterCommand" in proposalType)
+    throw Error("CanisterCommand is not handled");
+
     const response = proposalType.NeuronCommand[1][0];
     if (response) {
       summary = <NeuronCommandResponseList responses={response} />;

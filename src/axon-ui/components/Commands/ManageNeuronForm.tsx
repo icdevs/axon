@@ -2,10 +2,11 @@ import React, { useEffect, useState } from "react";
 import CreatableSelect from "react-select/creatable";
 import { ManageNeuron } from "../../declarations/Axon/Axon.did";
 import {
-  Action,
   Command,
   NeuronId,
 } from "../../declarations/Governance/Governance.did.d";
+
+import { Action } from "../../declarations/Axon/Axon.did";
 import useDebounce from "../../lib/hooks/useDebounce";
 import useNeuronOptions from "../../lib/hooks/useNeuronOptions";
 import ErrorAlert from "../Labels/ErrorAlert";
@@ -21,7 +22,7 @@ export default function ManageNeuronForm({
 }) {
   const defaultNeuronId = defaults?.id[0].id.toString();
   const [neuronId, setNeuronId] = useState(defaultNeuronId ?? "");
-  const [command, setCommand] = useState<Command>(defaults?.command[0] ?? null);
+  const [command, setCommand] = useState(defaults?.command[0] ?? null);
   const [error, setError] = useState("");
 
   const neuronOptions = useNeuronOptions();

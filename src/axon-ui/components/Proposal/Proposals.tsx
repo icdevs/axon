@@ -45,7 +45,7 @@ export default function Proposals() {
     );
 
   return (
-    <Panel className="py-4">
+    <Panel className="py-4 custom-panel">
       <div className="px-4 grid xs:grid-cols-3 gap-2 items-center mb-2">
         <div className="flex gap-2 items-center">
           <h2 className="text-xl font-bold">Proposals</h2>
