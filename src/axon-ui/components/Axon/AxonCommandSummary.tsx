@@ -8,6 +8,7 @@ import { AxonCommandKey } from "../../lib/types";
 import { formatNumber, formatPercent } from "../../lib/utils";
 import IdentifierLabelWithButtons from "../Buttons/IdentifierLabelWithButtons";
 import { DataRow, DataTable } from "../Proposal/DataTable";
+import MotionSummary from "./MotionSummary";
 import PolicySummary from "./PolicySummary";
 
 export default function AxonCommandSummary({
@@ -158,6 +159,11 @@ export default function AxonCommandSummary({
           </DataRow>
         </DataTable>
       );
+    }
+    case "Motion": {
+      assert("Motion" in request);
+      const payload = request.Motion;
+      return <MotionSummary label="Motion Proposal" motion={payload} />;
     }
   }
   return null;
