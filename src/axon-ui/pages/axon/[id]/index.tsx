@@ -17,7 +17,7 @@ export default function AxonPage() {
     <>
       <Breadcrumbs path={[{ path: `axon/${id}`, label: `Axon ${id}` }]} />
       {isLoadingError ? (
-        <Panel className="py-16 text-center text-gray-500 text-sm">
+        <Panel className="py-16 text-center text-gray-500 text-sm custom-panel">
           Axon {id} not found
         </Panel>
       ) : (

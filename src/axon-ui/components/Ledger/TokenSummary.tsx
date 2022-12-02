@@ -18,7 +18,7 @@ export default function TokenSummary() {
   const topHolders = ledger?.slice(0, 5).filter(([_, bal]) => bal > 0);
 
   return (
-    <Panel className="flex-1 p-4">
+    <Panel className="flex-1 p-4 custom-panel">
       <div className="xs:flex justify-between">
         <div className="flex gap-2 items-center">
           <h2 className="text-xl font-bold">Governance Summary</h2>

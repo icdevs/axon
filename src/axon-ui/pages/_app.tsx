@@ -27,9 +27,9 @@ export default function App({ Component, pageProps }) {
       <Store>
         <Subscriptions />
         <Head>
-          <title>Axon</title>
+          <title>ICDEV Governance Tool</title>
         </Head>
-        <div className="flex flex-col items-center bg-gradient-to-b from-yellow-300 to-pink-500">
+        <div className="flex flex-col items-center" style={{backgroundColor: "#F7F3E9"}}>
           <div className="flex flex-col justify-between min-h-screen w-full sm:max-w-screen-lg px-4">
             <main className="flex flex-col justify-start">
               <Nav />
