@@ -37,6 +37,9 @@ export const proposalTypeToString = (proposal: ProposalType) => {
   if ("AxonCommand" in proposal) {
     return axonCommandToString(proposal.AxonCommand[0]);
   } else {
+    if ("CanisterCommand" in proposal)
+    throw Error("CanisterCommand is not handled");
+
     return commandToString(proposal.NeuronCommand[0].command);
   }
 };
@@ -47,6 +50,9 @@ export const hasExecutionError = (proposal: ProposalType) => {
       ? "err" in proposal.AxonCommand[1][0]
       : false;
   } else {
+    if ("CanisterCommand" in proposal)
+    throw Error("CanisterCommand is not handled");
+
     return proposal.NeuronCommand[1][0]
       ? !proposal.NeuronCommand[1][0].every(([_, reses]) =>
           reses.every((res) =>
@@ -150,7 +156,7 @@ export const commandToString = (command: Command) => {
           } = action[actionKey] as ManageNeuron;
 
           return delegatedCommand
-            ? `${id[0]?.id.toString()}: ${commandToString(delegatedCommand)}`
+            ? `${id[0]?.id.toString()}: []` // TODO: fix ${commandToString(delegatedCommand)}
             : `Manage Neuron ${id[0]?.id.toString()}: ${
                 Object.keys(delegatedCommand)[0]
               }`;
@@ -242,4 +248,5 @@ export const axonCommandToString = (command: AxonCommandRequest) => {
       return `Motion Proposal to ${command.Motion.title}`;
     }
   }
+  return null;
 };

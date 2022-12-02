@@ -170,6 +170,9 @@ const ProposalTypeSummary = ({ proposal }: { proposal: ProposalType }) => {
   if ("AxonCommand" in proposal) {
     return <AxonCommandSummary axonCommand={proposal.AxonCommand} />;
   } else {
+    if ("CanisterCommand" in proposal)
+    throw Error("CanisterCommand is not handled");
+    
     return <NeuronCommandSummary neuronCommand={proposal.NeuronCommand} />;
   }
 };

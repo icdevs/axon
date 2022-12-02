@@ -29,7 +29,7 @@ export default function NeuronDetails({ neuronId }: { neuronId: string }) {
 
   const controller = neuron?.controller[0];
   const account = neuron
-    ? subaccountToAccount(governanceCanister, neuron.account)
+    ? subaccountToAccount(governanceCanister, []) // TODO: fix type for neuron.account
     : null;
 
   const votingPower = neuron ? calculateVotingPower(neuron) / 1e8 : null;

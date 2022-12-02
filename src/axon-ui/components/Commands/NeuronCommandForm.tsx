@@ -109,7 +109,8 @@ export default function NeuronCommandForm({
                   ],
                 },
               },
-              neuronIds: [[BigInt(manager)]],
+              neuronIds: [],
+              // TODO: check new Id Types [BigInt(manager)]
             },
             [],
           ];
@@ -118,7 +119,8 @@ export default function NeuronCommandForm({
         neuronCommand = [
           {
             command,
-            neuronIds: neuronIds.length > 0 ? [neuronIds.map(BigInt)] : [],
+            neuronIds: [],
+            // TODO: check new Id Types neuronIds.length > 0 ? [neuronIds.map(BigInt)] : []
           },
           [],
         ];
