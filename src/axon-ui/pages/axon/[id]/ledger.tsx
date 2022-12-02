@@ -8,7 +8,7 @@ import useAxonId from "../../../lib/hooks/useAxonId";
 export default function LedgerPage() {
   const id = useAxonId();
   const { data } = useAxonById();
-  console.log(data);
+  
   return (
     <>
       <div className="xs:flex justify-between items-center">
@@ -18,13 +18,7 @@ export default function LedgerPage() {
             { path: "ledger", label: "Ledger" },
           ]}
         />
-        {
-          data?.policy?.restrictTokenTransfer ? (
-            <div>Transfer Disabled</div>
-          ) : (
-            <TransferModal />
-          )
-        }
+        <TransferModal />
       </div>
       <div className="pt-4">
         <Ledger />

@@ -6,6 +6,7 @@ import {
 import { useAxonById } from "../../lib/hooks/Axon/useAxonById";
 import { KeysOfUnion } from "../../lib/types";
 import { AddProposersForm } from "./AddProposersForm";
+import { BurnForm } from "./BurnForm";
 import { MintForm } from "./MintForm";
 import { MotionForm } from "./MotionForm";
 import { PolicyFormWithDefaults } from "./PolicyForm";
@@ -23,6 +24,7 @@ const commands: [AxonCommandName, string][] = [
   ["SetVisibility", "Set Visibility"],
   ["SetPolicy", "Set Policy"],
   ["Mint", "Mint"],
+  ["Burn", "Burn"],
   ["Transfer", "Transfer"],
   ["Redenominate", "Redenominate"],
   ["Motion", "Motion Proposal"],
@@ -107,6 +109,17 @@ export default function AxonCommandForm({
             defaults={
               defaultCommand && "Mint" in defaultCommand
                 ? defaultCommand.Mint
+                : undefined
+            }
+          />
+        );
+      case "Burn":
+        return (
+          <BurnForm
+            makeCommand={setCommand}
+            defaults={
+              defaultCommand && "Burn" in defaultCommand
+                ? defaultCommand.Burn
                 : undefined
             }
           />

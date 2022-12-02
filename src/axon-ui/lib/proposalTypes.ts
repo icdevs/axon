@@ -231,6 +231,13 @@ export const axonCommandToString = (command: AxonCommandRequest) => {
         : "";
       return `Mint ${formatNumber(command.Mint.amount)} tokens${to}`;
     }
+    case "Burn": {
+      assert("Burn" in command);
+      const to = command.Burn.owner
+        ? ` to ${shortPrincipal(command.Burn.owner)}`
+        : "";
+      return `Burn ${formatNumber(command.Burn.amount)} tokens${to}`;
+    }
     case "Transfer": {
       assert("Transfer" in command);
       return `Transfer ${formatNumber(
