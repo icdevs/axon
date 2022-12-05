@@ -1,7 +1,7 @@
 import Document, { Head, Html, Main, NextScript } from "next/document";
 
-const fullTitle = "ICDEV Govern";
-const description = "Caniste Govarnance system";
+const fullTitle = process.env.PAGE_TITLE;
+const description = process.env.PAGE_TITLE;
 
 export default class MyDocument extends Document {
   render() {
@@ -9,7 +9,7 @@ export default class MyDocument extends Document {
       <Html>
         <Head>
           <meta name="description" content={fullTitle} />
-          <link rel="icon" href="/img/logo.svg" />
+          <link rel="icon" href={`/img/${process.env.LOGO_ICON}`} />
           <meta property="og:type" content="website" />
           <meta name="title" content={fullTitle} />
           <meta property="og:title" content={fullTitle} />

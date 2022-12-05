@@ -1,6 +1,6 @@
-import { useRouter } from "next/dist/client/router";
 import React, { useState } from "react";
 import { BiListUl } from "react-icons/bi";
+import { useNavigate } from "react-router-dom";
 import { useActiveProposals as useActiveProposals } from "../../lib/hooks/Axon/useActiveProposals";
 import { useAllProposals } from "../../lib/hooks/Axon/useAllProposals";
 import useAxonId from "../../lib/hooks/useAxonId";
@@ -15,7 +15,7 @@ const ProposalTypes = ["Active", "All"] as const;
 type ProposalType = typeof ProposalTypes[number];
 
 export default function Proposals() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const axonId = useAxonId();
   const activeProposalsQuery = useActiveProposals();
   const allProposalsQuery = useAllProposals();
@@ -77,7 +77,7 @@ export default function Proposals() {
             <li key={proposal.id.toString()}>
               <ListButton
                 onClick={() =>
-                  router.push(
+                  navigate(
                     `/axon/${axonId}/proposal/${proposal.id.toString()}`
                   )
                 }

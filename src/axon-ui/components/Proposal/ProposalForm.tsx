@@ -1,5 +1,5 @@
 import classNames from "classnames";
-import { useRouter } from "next/dist/client/router";
+import { useNavigate } from "react-router-dom";
 import React, { useState } from "react";
 import { ProposalType } from "../../declarations/Axon/Axon.did";
 import { useIsProposer } from "../../lib/hooks/Axon/useIsProposer";
@@ -24,7 +24,7 @@ export default function ProposalForm({
   defaultProposal?: ProposalType;
   defaultNeuronIds?: string[];
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const isOwner = useIsProposer();
   const axonId = useAxonId();
   const neuronIds = useNeuronIds();
@@ -40,7 +40,7 @@ export default function ProposalForm({
       mutate(proposal, {
         onSuccess: (data) => {
           closeModal();
-          router.push(`/axon/${axonId}/proposal/${data.id.toString()}`);
+          navigate(`/axon/${axonId}/proposal/${data.id.toString()}`);
         },
       });
     }

@@ -12,12 +12,15 @@ console.log(`AXON_CANISTER_ID=${AXON_CANISTER_ID}`);
 module.exports = {
   env: {
     AXON_CANISTER_ID,
+    LOGO_ICON: "logo.svg",
+    GLOBAL_STYLES: "globals.css",
+    PAGE_TITLE: "ICDEV Governance Tool",
   },
   async rewrites() {
     return [
       {
-        source: "/api/:slug*",
-        destination: "https://api.axon.ooo/api/:slug*",
+        source: '/:path*',
+        destination: '/',
       },
     ];
   },
