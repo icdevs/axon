@@ -1,7 +1,6 @@
-import { useRouter } from "next/dist/client/router";
+import { useParams } from "react-router";
 
 export default function useAxonId(): string | undefined {
-  const router = useRouter();
-  const { id } = router.query as { id: string };
+  const { id } = useParams();
   return id;
 }

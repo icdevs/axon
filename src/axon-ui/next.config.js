@@ -16,8 +16,8 @@ module.exports = {
   async rewrites() {
     return [
       {
-        source: "/api/:slug*",
-        destination: "https://api.axon.ooo/api/:slug*",
+        source: '/:path*',
+        destination: '/',
       },
     ];
   },

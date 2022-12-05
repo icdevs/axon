@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "react-router-dom";
 import React from "react";
 import { useTopAxons } from "../../lib/hooks/Axons/useTopAxons";
 import { formatNumber, pluralize } from "../../lib/utils";
@@ -25,8 +25,8 @@ export default function AllAxons() {
         {data ? (
           <div className="grid xs:grid-cols-2 md:grid-cols-3 grid-cols-1 gap-8 p-4">
             {data.map(({ id, totalStake, tokenHolders, name }) => (
-              <Link key={id.toString()} href={`/axon/${id}`} legacyBehavior>
-                <a className="p-4 bg-black text-xl text-white h-48 hover:shadow-xl transition">
+              <Link key={id.toString()} to={`/axon/${id}`} className="p-4 bg-black text-xl text-white h-48 hover:shadow-xl transition">
+                <>
                   <h3 className="text-2xl font-bold">{name}</h3>
                   <label className="block">Axon {id.toString()}</label>
                   <BalanceLabel value={totalStake} />
@@ -34,7 +34,7 @@ export default function AllAxons() {
                     {formatNumber(tokenHolders)}{" "}
                     {pluralize("Holder", Number(tokenHolders))}
                   </label>
-                </a>
+                </>
               </Link>
             ))}
           </div>

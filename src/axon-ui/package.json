@@ -29,6 +29,8 @@
     "react-dom": "18.2.0",
     "react-icons": "^4.6.0",
     "react-query": "^3.39.2",
+    "react-router": "^6.4.4",
+    "react-router-dom": "^6.4.4",
     "react-select": "^5.6.1",
     "sha.js": "^2.4.11",
     "use-clipboard-copy": "^0.2.0"

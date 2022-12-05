@@ -1,10 +1,9 @@
-import { useRouter } from "next/dist/client/router";
+import { useParams } from "react-router-dom";
 import React from "react";
 import { ProposalDetails } from "../../../../components/Proposal/ProposalDetails";
 
 export default function ProposalPage() {
-  const router = useRouter();
-  const { proposalId } = router.query as { proposalId: string };
+  const { proposalId } = useParams();
 
   return <ProposalDetails proposalId={proposalId} />;
 }

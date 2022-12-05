@@ -1,34 +1,105 @@
-import Link from "next/link";
-import React from "react";
-import { FaArrowRight } from "react-icons/fa";
-import AllAxons from "../components/Axons/AllAxons";
-import MyAxons from "../components/Axons/MyAxons";
-import Panel from "../components/Containers/Panel";
-import { useGlobalContext } from "../components/Store/Store";
+import "balloon-css";
+import {
+  createBrowserRouter,
+  RouterProvider,
+  Route,
+} from "react-router-dom";
+import { Outlet } from "react-router-dom";
+import Head from "next/head";
+import "react";
+import React, { PropsWithChildren } from "react";
+import { QueryClient, QueryClientProvider } from "react-query";
+import Footer from "../components/Layout/Footer";
+import Nav from "../components/Layout/Nav";
+import { Subscriptions } from "../components/Query/Subscriptions";
+import Store from "../components/Store/Store";
+import { ONE_HOUR_MS } from "../lib/constants";
+import Home from "./Home";
+import CreateAxonPage from "./axon/new";
+import AxonPage from "./axon/[id]";
+import LedgerPage from "./axon/[id]/ledger";
+import ProposalPage from "./axon/[id]/proposal/[proposalId]";
+import NeuronPage from "./axon/[id]/neuron/[neuronId]";
+import Neurons from "../components/Neuron/Neurons";
 
-export default function Home() {
-  const {
-    state: { isAuthed },
-  } = useGlobalContext();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      staleTime: Infinity,
+      cacheTime: ONE_HOUR_MS,
+      retry: false,
+    },
+  },
+});
+
+const Root: React.FC = () => {
+  return (
+    <div>
+      <QueryClientProvider client={queryClient}>
+        <Store>
+          <Subscriptions />
+          <Head>
+            <title>ICDEV Governance Tool</title>
+          </Head>
+          <div className="flex flex-col items-center" style={{backgroundColor: "#F7F3E9"}}>
+            <div className="flex flex-col justify-between min-h-screen w-full sm:max-w-screen-lg px-4">
+              <main className="flex flex-col justify-start">
+                <Nav />
+                <Outlet />  
+              </main>
+              <Footer />
+            </div>
+          </div>
+        </Store>
+
+        {/* <ReactQueryDevtools initialIsOpen={false} /> */}
+      </QueryClientProvider>
+    </div>
+  )
+}
+
+export default function Index() {
+  const router = createBrowserRouter([
+    {
+      path: "/",
+      element: <Root />,
+      children: [
+        {
+          path: "/",
+          element: <Home />,
+        },
+        {
+          path: "/axon/new",
+          element: <CreateAxonPage />,
+        },
+        {
+          path: "/axon/:id",
+          element: <AxonPage />,
+        },
+        {
+          path: "/axon/:id/ledger",
+          element: <LedgerPage />,
+        },
+        {
+          path: "/axon/:id/proposal/:proposalId",
+          element: <ProposalPage />,
+        },
+        {
+          path: "/axon/:id/neurons",
+          element: <Neurons />,
+        },
+        {
+          path: "/axon/:id/neurons/:neuronId",
+          element: <NeuronPage />,
+        },
+      ]
+    },
+  ]);
 
   return (
-    <div className="flex flex-col gap-8 pt-8">
-      <Panel className="p-8 text-xl custom-panel">
-        <div className="flex flex-col gap-4 items-start md:flex-row md:justify-between">
-          <span>
-            Service for Axon canisters management
-          </span>
-          <Link href="/axon/new" legacyBehavior>
-            <a className="rounded-md btn-cta px-4 py-2 text-xl inline-flex gap-2 items-center whitespace-nowrap">
-              Create new Governance <FaArrowRight />
-            </a>
-          </Link>
-        </div>
-      </Panel>
-
-      {isAuthed && <MyAxons />}
-
-      <AllAxons />
+    <div suppressHydrationWarning>
+      <RouterProvider router={router}/>
     </div>
   );
 }

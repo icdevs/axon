@@ -1,6 +1,6 @@
 import { Principal } from "@dfinity/principal";
 import classNames from "classnames";
-import { useRouter } from "next/dist/client/router";
+import { useNavigate } from "react-router-dom";
 import React, { useEffect, useState } from "react";
 import useCreate from "../../lib/hooks/Axons/useCreate";
 import { DefaultPolicy, PolicyForm } from "../Axon/PolicyForm";
@@ -49,7 +49,7 @@ const defaultPolicyForType = (
 };
 
 export default function CreateAxonForm() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const {
     state: { principal },
   } = useGlobalContext();
@@ -109,7 +109,7 @@ export default function CreateAxonForm() {
       },
       {
         onSuccess: (data) => {
-          router.push(`/axon/${data.id.toString()}`);
+          navigate(`/axon/${data.id.toString()}`);
         },
       }
     );

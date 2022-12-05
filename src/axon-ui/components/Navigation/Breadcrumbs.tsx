@@ -1,5 +1,5 @@
 import classNames from "classnames";
-import Link from "next/link";
+import { Link } from "react-router-dom";
 import React, { Fragment } from "react";
 import { FaChevronRight } from "react-icons/fa";
 
@@ -19,14 +19,12 @@ export default function Breadcrumbs({ path }: { path: Path[] }) {
 
   return (
     <div className="flex items-center gap-2 py-4 overflow-hidden">
-      <Link href="/" legacyBehavior>
-        <a
-          className={classNames({
+      <Link to="/" className={classNames({
             "opacity-50 hover:opacity-100 transition-opacity": path.length > 0,
-          })}
-        >
+          })}>
+        <>
           Home
-        </a>
+        </>
       </Link>
       {joined.map((item, i) => (
         <Fragment key={i}>
@@ -36,10 +34,10 @@ export default function Breadcrumbs({ path }: { path: Path[] }) {
               {item.label}
             </span>
           ) : (
-            <Link href={item.url} legacyBehavior>
-              <a className="opacity-50 hover:opacity-100 transition-opacity whitespace-nowrap">
+            <Link to={item.url} className="opacity-50 hover:opacity-100 transition-opacity whitespace-nowrap">
+              <>
                 {item.label}
-              </a>
+              </>
             </Link>
           )}
         </Fragment>
