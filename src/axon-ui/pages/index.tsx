@@ -2,7 +2,6 @@ import "balloon-css";
 import {
   createBrowserRouter,
   RouterProvider,
-  Route,
 } from "react-router-dom";
 import { Outlet } from "react-router-dom";
 import Head from "next/head";
@@ -40,13 +39,13 @@ const Root: React.FC = () => {
         <Store>
           <Subscriptions />
           <Head>
-            <title>ICDEV Governance Tool</title>
+            <title>{process.env.PAGE_TITLE}</title>
           </Head>
           <div className="flex flex-col items-center" style={{backgroundColor: "#F7F3E9"}}>
             <div className="flex flex-col justify-between min-h-screen w-full sm:max-w-screen-lg px-4">
               <main className="flex flex-col justify-start">
                 <Nav />
-                <Outlet />  
+                <Outlet />
               </main>
               <Footer />
             </div>

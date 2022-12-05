@@ -1,5 +1,5 @@
 import { AppProps } from 'next/app';
-import "../styles/globals.css";
+require(`../styles/${process.env.GLOBAL_STYLES}`);
 
 function SafeHydrate({ children }) {
   return (
@@ -11,7 +11,9 @@ function SafeHydrate({ children }) {
 
 function App({ Component, pageProps }: AppProps) {
   return (
-    <SafeHydrate><Component {...pageProps} /></SafeHydrate>
+    <SafeHydrate>
+      <Component {...pageProps} />
+    </SafeHydrate>
   );
 }
 export default App;
