@@ -6,6 +6,7 @@ import useNames from "../../lib/hooks/useNames";
 import { shortAccount, shortPrincipal } from "../../lib/utils";
 import CopyButton from "./CopyButton";
 import ExternalLinkButton from "./ExternalLinkButton";
+import { principalToAccountDefaultIdentifier } from "../../lib/account";
 
 export type IdentifierRenderProps = {
   rawId: string;
@@ -64,7 +65,7 @@ export default function IdentifierLabelWithButtons({
   const { neuronName, principalName } = useNames();
   const rawId =
     typeof id === "object" && "_isPrincipal" in id
-      ? id.toText()
+      ? id.toString()
       : typeof id === "bigint"
       ? id.toString()
       : typeof id === "object" && "id" in id
@@ -74,16 +75,16 @@ export default function IdentifierLabelWithButtons({
   let link: string;
   switch (type) {
     case "Principal":
-      link = `https://ic.rocks/principal/${rawId}`;
+      link = `https://dashboard.internetcomputer.org/account/${principalToAccountDefaultIdentifier(rawId)}`;
       break;
     case "Account":
-      link = `https://ic.rocks/account/${rawId}`;
+      link = `https://dashboard.internetcomputer.org/account/${rawId}`;
       break;
     case "Neuron":
-      link = `https://ic.rocks/neuron/${rawId}`;
+      link = `https://dashboard.internetcomputer.org/neuron/${rawId}`;
       break;
     case "Proposal":
-      link = `https://ic.rocks/proposal/${rawId}`;
+      link = `https://dashboard.internetcomputer.org/proposal/${rawId}`;
       break;
   }
 
@@ -108,7 +109,7 @@ export default function IdentifierLabelWithButtons({
         <>
           <CopyButton text={rawId} title={`Copy ${type}`} />
           {!!link && (
-            <ExternalLinkButton link={link} title="View on ic.rocks" />
+            <ExternalLinkButton link={link} title="View on the Internet Copmputer Dashboard" />
           )}
         </>
       )}

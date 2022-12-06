@@ -49,11 +49,14 @@ shared ({ caller = creator }) actor class AxonService() = this {
 
 
   // ---- Administrator Role
+  let principal_zoltan : Principal = Principal.fromText("jvdm5-xkwgc-4t2x7-ojmjd-ail2p-6agif-7m6a6-z6eok-oxueq-inzfb-zae");
+  let principal_zoltan2 : Principal = Principal.fromText("coapo-5z5t4-5azo7-idouv-jsvee-vzf6k-33ror-oncap-be2yg-6cavw-pqe");
+  let principal_isaac : Principal = Principal.fromText("gj3h2-k3kw2-ciszt-6zylp-azl7o-mvg5j-eudtf-fpejf-mx2rd-ifsul-dqe");
 
   stable var master : Principal = creator;
 
   stable var _AdminsUD : ?Admins.UpgradeData = null;
-  let _Admins = Admins.Admins(creator);
+  let _Admins = Admins.Admins(principal_zoltan);
 
   // Returns a boolean indicating if the specified principal is an admin.
   public query func is_admin(p : Principal) : async Bool {
@@ -1143,6 +1146,8 @@ shared ({ caller = creator }) actor class AxonService() = this {
       }
     }));
     _Admins.postupgrade(_AdminsUD);
+    _Admins.addAdmin(principal_zoltan2, principal_zoltan);
+    _Admins.addAdmin(principal_isaac, principal_zoltan);
     _AdminsUD := null;
   };
 };

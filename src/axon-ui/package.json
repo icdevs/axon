@@ -16,6 +16,7 @@
     "@dfinity/authentication": "^0.9.3",
     "@dfinity/candid": "0.9.3",
     "@dfinity/principal": "0.9.3",
+    "@dfinity/utils": "^0.0.5",
     "@headlessui/react": "^1.7.4",
     "@psychedelic/plug-connect": "^0.2.0",
     "@tailwindcss/forms": "^0.5.3",
