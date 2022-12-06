@@ -12,6 +12,7 @@ import { ProposalOptionsForm } from "../Axon/ProposalOptionsForm";
 import SpinnerButton from "../Buttons/SpinnerButton";
 import NeuronCommandForm from "../Commands/NeuronCommandForm";
 import ErrorAlert from "../Labels/ErrorAlert";
+import CanisterCommandForm from "../Commands/CanisterCommandForm";
 
 export default function ProposalForm({
   closeModal,
@@ -37,6 +38,7 @@ export default function ProposalForm({
     e.preventDefault();
 
     if (isOwner && proposal) {
+      console.log(proposal);
       mutate(proposal, {
         onSuccess: (data) => {
           closeModal();
@@ -73,6 +75,12 @@ export default function ProposalForm({
                 ? defaultProposal.NeuronCommand[0]
                 : undefined
             }
+          />
+        )}
+
+        {proposalType === "CanisterCommand" && (
+          <CanisterCommandForm
+            setProposal={setProposal}
           />
         )}
 

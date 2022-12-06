@@ -11,6 +11,7 @@ import {
 } from "../../lib/proposalTypes";
 import { principalIsEqual } from "../../lib/utils";
 import AxonCommandSummary from "../Axon/AxonCommandSummary";
+import CanisterCommandSummary from "../Axon/CanisterCommandSummary";
 import PolicySummary from "../Axon/PolicySummary";
 import IdentifierLabelWithButtons from "../Buttons/IdentifierLabelWithButtons";
 import { RefreshButton } from "../Buttons/RefreshButton";
@@ -171,7 +172,7 @@ const ProposalTypeSummary = ({ proposal }: { proposal: ProposalType }) => {
     return <AxonCommandSummary axonCommand={proposal.AxonCommand} />;
   } else {
     if ("CanisterCommand" in proposal)
-    throw Error("CanisterCommand is not handled");
+     return <CanisterCommandSummary canisterCommand={proposal.CanisterCommand} />
     
     return <NeuronCommandSummary neuronCommand={proposal.NeuronCommand} />;
   }

@@ -3,6 +3,7 @@ import { DateTime } from "luxon";
 import {
   AddHotKey,
   AxonCommandRequest,
+  CanisterCommandRequest,
   Command,
   Configure,
   Disburse,
@@ -37,10 +38,11 @@ export const proposalTypeToString = (proposal: ProposalType) => {
   if ("AxonCommand" in proposal) {
     return axonCommandToString(proposal.AxonCommand[0]);
   } else {
-    if ("CanisterCommand" in proposal)
-    throw Error("CanisterCommand is not handled");
-
-    return commandToString(proposal.NeuronCommand[0].command);
+    if ("CanisterCommand" in proposal) {
+      return canisterCommandToString(proposal.CanisterCommand[0]);
+    } else {
+      return commandToString(proposal.NeuronCommand[0].command);
+    }
   }
 };
 
@@ -51,7 +53,9 @@ export const hasExecutionError = (proposal: ProposalType) => {
       : false;
   } else {
     if ("CanisterCommand" in proposal)
-    throw Error("CanisterCommand is not handled");
+      return proposal.CanisterCommand[1][0]
+        ? "err" in proposal.CanisterCommand[1][0]
+        : false;
 
     return proposal.NeuronCommand[1][0]
       ? !proposal.NeuronCommand[1][0].every(([_, reses]) =>
@@ -255,5 +259,12 @@ export const axonCommandToString = (command: AxonCommandRequest) => {
       return `Motion Proposal to ${command.Motion.title}`;
     }
   }
+  return null;
+};
+
+export const canisterCommandToString = (command: CanisterCommandRequest) => {
+  const key = Object.keys(command)[0] as AxonCommandKey;
+ 
+  return `Canister Command: id:${command.canister}, call: ${command.functionName}`;
   return null;
 };

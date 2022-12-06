@@ -2,6 +2,8 @@ import React, { ReactNode } from "react";
 import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 import { ProposalType } from "../../declarations/Axon/Axon.did";
 import { AxonCommandResponseSummary } from "../Axon/AxonCommandResponseSummary";
+import { CanisterCommandResponseSummary } from "../Axon/CanisterCommandResponseSummary";
+import CanisterCommandSummary from "../Axon/CanisterCommandSummary";
 import ErrorAlert from "../Labels/ErrorAlert";
 import SuccessAlert from "../Labels/SuccessAlert";
 import NeuronCommandResponseList from "./NeuronCommandResponseList";
@@ -64,12 +66,16 @@ export const CommandResponseSummary = ({
       summary = <AxonCommandResponseSummary response={response} />;
     }
   } else {
-    if ("CanisterCommand" in proposalType)
-    throw Error("CanisterCommand is not handled");
-
-    const response = proposalType.NeuronCommand[1][0];
-    if (response) {
-      summary = <NeuronCommandResponseList responses={response} />;
+    if ("CanisterCommand" in proposalType){
+      const response = proposalType.CanisterCommand[1][0];
+      if (response) {
+        summary = <CanisterCommandResponseSummary response={response} />;
+      }
+    } else {
+      const response = proposalType.NeuronCommand[1][0];
+      if (response) {
+        summary = <NeuronCommandResponseList responses={response} />;
+      }
     }
   }
   return summary && <div className="pt-2">{summary}</div>;

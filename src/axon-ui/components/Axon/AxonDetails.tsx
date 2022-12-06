@@ -10,6 +10,7 @@ import Panel from "../Containers/Panel";
 import ResponseError from "../Labels/ResponseError";
 import { VisibilityLabel } from "../Labels/VisibilityLabel";
 import { DataRow, DataTable } from "../Proposal/DataTable";
+import CanisterCommandModal from "./CanisterCommandModal";
 import ManageAxonModal from "./ManageAxonModal";
 import PolicySummary from "./PolicySummary";
 
@@ -32,6 +33,7 @@ export default function AxonDetails() {
             title="Refresh Axon"
           />
         </div>
+        <CanisterCommandModal />
         <ManageAxonModal />
       </div>
 
