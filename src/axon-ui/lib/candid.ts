@@ -1,51 +1,9 @@
-import { Actor, HttpAgent, ActorSubclass, CanisterStatus } from '@dfinity/agent';
+import { Actor, HttpAgent, ActorSubclass } from '@dfinity/agent';
 import {
   IDL, InputBox, renderInput, renderValue
 } from '@dfinity/candid';
-import {Principal} from '@dfinity/principal';
+import {Principal} from '@dfinity/principal'
 
-interface ExternalConfig {
-  candid?: string;
-}
-
-const hasExternalConfig = new URLSearchParams(window.location.search).has(
-  "external-config"
-);
-
-type MessageListener = (message: any) => void;
-
-const messageListeners: MessageListener[] = [];
-
-export function addMessageListener(listener: MessageListener) {
-  messageListeners.push(listener);
-}
-
-/**
- * Use this global promise to safely access `external-config` data provided through `postMessage()`.
- */
- export const EXTERNAL_CONFIG_PROMISE: Promise<ExternalConfig> = new Promise(
-  (resolve) => {
-    if (!hasExternalConfig) {
-      return resolve({});
-    }
-    let resolved = false;
-
-    // Listen for "config" messages
-    addMessageListener((message) => {
-      if (message?.type === "config") {
-        resolved = true;
-        return resolve({ ...message.config });
-      }
-    });
-
-    setTimeout(() => {
-      if (!resolved) {
-        console.error("External config timeout");
-        resolve({});
-      }
-    }, 3000);
-  }
-);
 
 declare var flamegraph: any;
 declare var d3: any;
@@ -58,7 +16,7 @@ function is_local(agent: HttpAgent) {
   return hostname === '127.0.0.1' || hostname.endsWith('localhost');
 }
 
-const agent = new HttpAgent();
+const agent = new HttpAgent({host: "https://ic0.app"});
 if (is_local(agent)) {
   agent.fetchRootKey();
 }
@@ -86,30 +44,19 @@ function getCanisterId(): Principal {
   throw new Error("Could not find the canister ID.");
 }
 
-export async function fetchActor(canisterId: Principal): Promise<ActorSubclass> {
+export async function fetchActor(canisterId: Principal, maybeDid?: string): Promise<{actor: ActorSubclass, idl: any}> {
   let js;
-  const maybeDid = new URLSearchParams(window.location.search).get(
-    "did"
-  );
-  const base64Source = (await EXTERNAL_CONFIG_PROMISE)?.candid || window.history.state?.candid || maybeDid;
-  if (base64Source) {
-    js = await didToJs(window.atob(base64Source));
-    if (!js) {
-      console.warn('Nothing returned from didjs for base64 input:', base64Source);
-    }
-  }
-  if (!js) {
-    js = await getDidJsFromMetadata(canisterId);
-    if (!js) {
-      try {
-        js = await getDidJsFromTmpHack(canisterId);
-      } catch(err) {
-        if (/no query method/.test(err)) {
-          console.warn(err);
-          js = undefined;
-        } else {
-          throw(err);
-        }
+  if (maybeDid) {
+    const source = window.atob(maybeDid);
+    js = await didToJs(source, canisterId);
+  } else {
+    try {
+      js = await getRemoteDidJs(canisterId);
+    } catch(err) {
+      if (/no query method/.test(err)) {
+        js = await getLocalDidJs(canisterId);
+      } else {
+        throw(err);
       }
     }
   }
@@ -118,22 +65,17 @@ export async function fetchActor(canisterId: Principal): Promise<ActorSubclass> 
   }
   const dataUri = 'data:text/javascript;charset=utf-8,' + encodeURIComponent(js);
   const candid: any = await eval('import("' + dataUri + '")');
-  return Actor.createActor(candid.idlFactory, { agent, canisterId });
+  console.log(candid);
+  return {actor: Actor.createActor(candid.idlFactory, { agent, canisterId }), idl: candid.idlFactory};
 }
 
 export function getProfilerActor(canisterId: Principal): ActorSubclass {
   const profiler_interface: IDL.InterfaceFactory = ({ IDL }) => IDL.Service({
     __get_profiling: IDL.Func([], [IDL.Vec(IDL.Tuple(IDL.Int32, IDL.Int64))], ['query']),
+    __get_names: IDL.Func([], [IDL.Vec(IDL.Nat8)], ['query']),
     __get_cycles: IDL.Func([], [IDL.Int64], ['query']),
   });
   return Actor.createActor(profiler_interface, { agent, canisterId });
-}
-
-function postToPlayground(id: Principal) {
-  const message = {
-    caller: id.toText(),
-  };
-  (window.parent || window.opener)?.postMessage(`CandidUI${JSON.stringify(message)}`, '*');
 }
 
 export async function getCycles(canisterId: Principal): Promise<bigint|undefined> {
@@ -148,31 +90,13 @@ export async function getCycles(canisterId: Principal): Promise<bigint|undefined
 
 export async function getNames(canisterId: Principal) {
   try {
-    const paths : CanisterStatus.Path[] = [{
-      kind: 'metadata',
-      path: 'name',
-      key: 'name',
-      decodeStrategy: 'raw',
-    }];
-    const status = await CanisterStatus.request({ agent, canisterId, paths });
-    const blob = status.get('name') as ArrayBuffer;
-    const decoded = IDL.decode([IDL.Vec(IDL.Tuple(IDL.Nat16, IDL.Text))], blob)[0] as Array<[number,string]>;
+    const actor = getProfilerActor(canisterId);
+    const blob = await actor.__get_names() as number[];
+  // @ts-ignore
+    const decoded = IDL.decode([IDL.Vec(IDL.Tuple(IDL.Nat16, IDL.Text))], Uint8Array.from(blob))[0] as Array<[number,string]>;
     decoded.forEach(([id, name]) => names[id] = name);
   } catch(err) {
-    return undefined;
-  }
-}
-
-async function getDidJsFromPostMessage(canisterId: Principal): Promise<undefined | string> {
-  return new Promise((resolve,reject)=>{})
-}
-
-async function getDidJsFromMetadata(canisterId: Principal): Promise<undefined | string> {
-  const status = await CanisterStatus.request({ agent, canisterId, paths: ['candid'] });
-  const did = status.get('candid') as string | null;
-  if (did) {
-    return didToJs(did);
-  } else {
+    console.log(err);
     return undefined;
   }
 }
@@ -235,7 +159,7 @@ function decodeProfiling(input: Array<[number, bigint]>) {
 async function renderFlameGraph(profiler: any) {
   const profiling = decodeProfiling(await profiler());
   //console.log(profiling);
-  if (typeof profiling !== 'undefined') {
+  if (profiling) {
     let div = document.createElement('div');
     div.id = 'chart';
     log(div);
@@ -247,7 +171,17 @@ async function renderFlameGraph(profiler: any) {
   }
 }
 
-async function getDidJsFromTmpHack(canisterId: Principal): Promise<undefined | string> {
+async function getLocalDidJs(canisterId: Principal): Promise<undefined | string> {
+  const origin = window.location.origin;
+  const url = `${origin}/_/candid?canisterId=${canisterId.toText()}&format=js`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    return undefined;
+  }
+  return response.text();
+}
+
+async function getRemoteDidJs(canisterId: Principal): Promise<undefined | string> {
   const common_interface: IDL.InterfaceFactory = ({ IDL }) => IDL.Service({
     __get_candid_interface_tmp_hack: IDL.Func([], [IDL.Text], ['query']),
   });
@@ -256,21 +190,25 @@ async function getDidJsFromTmpHack(canisterId: Principal): Promise<undefined | s
   return didToJs(candid_source);
 }
 
-async function didToJs(candid_source: string): Promise<undefined | string> {
+async function didToJs(candid_source: string, canisterId?: Principal): Promise<undefined | string> {
   // call didjs canister
-  const didjs_id = getCanisterId();
+  const didjs_id = Principal.fromText("a4gq6-oaaaa-aaaab-qaa4q-cai");
   const didjs_interface: IDL.InterfaceFactory = ({ IDL }) => IDL.Service({
     did_to_js: IDL.Func([IDL.Text], [IDL.Opt(IDL.Text)], ['query']),
   });
   const didjs: ActorSubclass = Actor.createActor(didjs_interface, { agent, canisterId: didjs_id });
   const js: any = await didjs.did_to_js(candid_source);
+  console.log(js);
+  if (!js[0]) {
+    return undefined;
+  }
   return js[0];  
 }
 
 export function render(id: Principal, canister: ActorSubclass, profiling: bigint|undefined) {
   document.getElementById('canisterId')!.innerText = `${id}`;
   let profiler;
-  if (typeof profiling !== 'undefined') {
+  if (profiling) {
     log(`Wasm instructions executed ${profiling} instrs.`);
     profiler = async () => { return await getProfiling(id) };
   }
@@ -406,11 +344,8 @@ function renderMethod(canister: ActorSubclass, name: string, idlFunc: IDL.FuncCl
       textContainer.innerHTML = decodeSpace(text);
       const showArgs = encodeStr(IDL.FuncClass.argsToString(idlFunc.argTypes, args));
       log(decodeSpace(`› ${name}${showArgs}`));
-      if (profiler && !idlFunc.annotations.includes('query')) {
+      if (profiler) {
         await renderFlameGraph(profiler);
-      }
-      if (!idlFunc.annotations.includes('query')) {
-        postToPlayground(Actor.canisterIdOf(canister));
       }
       log(decodeSpace(text));
 
@@ -434,13 +369,10 @@ function renderMethod(canister: ActorSubclass, name: string, idlFunc: IDL.FuncCl
     })().catch(err => {
       resultDiv.classList.add('error');
       left.innerText = err.message;
-      if (profiler && !idlFunc.annotations.includes('query')) {
+      if (profiler) {
         const showArgs = encodeStr(IDL.FuncClass.argsToString(idlFunc.argTypes, args));
         log(`[Error] ${name}${showArgs}`);
         renderFlameGraph(profiler);
-      }
-      if (!idlFunc.annotations.includes('query')) {
-        postToPlayground(Actor.canisterIdOf(canister));
       }
       throw err;
     });
@@ -504,4 +436,3 @@ function log(content: Element | string) {
   outputEl.appendChild(line);
   line.scrollIntoView();
 }
-

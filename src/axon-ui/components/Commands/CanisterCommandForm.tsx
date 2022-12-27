@@ -1,11 +1,15 @@
 import { Principal } from "@dfinity/principal";
 import React, { useEffect, useState } from "react";
+import { Actor, HttpAgent, ActorSubclass } from '@dfinity/agent';
+import { IDL } from "@dfinity/candid";
+import { fetchActor, render, getCycles, getNames } from '../../lib/candid';
 import {
   CanisterCommandRequest,
   ProposalType,
 } from "../../declarations/Axon/Axon.did";
 import { useAxonById } from "../../lib/hooks/Axon/useAxonById";
 import ErrorAlert from "../Labels/ErrorAlert";
+
 
 export default function CanisterCommandForm({
   setProposal,
@@ -16,7 +20,32 @@ export default function CanisterCommandForm({
   const [canisterId, setCanisterId] = useState("");
   const [callFunction, setCallFunction] = useState("");
   const [callProperies, setCallProperies] = useState("");
+  const [functionsOptions, setFunctionsOptions] = useState([]);
+  const [service, setService] = useState<any>();
   const [error, setError] = useState("");
+
+  const handleFileSelect = (e) => {
+    const did = e.target;
+    const reader = new FileReader();
+    reader.addEventListener("load", async () => {
+      const encoded = reader.result as string;
+      const hex = encoded.substr(encoded.indexOf(',') + 1);
+      const DidActor = await fetchActor(Principal.fromText(canisterId), hex);
+      console.log(DidActor)
+      setFunctionsOptions(Object.keys(DidActor.actor));
+      setService(DidActor.idl({ IDL }));
+    });
+    reader.readAsDataURL(did.files![0]);
+  };
+
+  const loadDid = async () => {
+    const DidActor = await fetchActor(Principal.fromText(canisterId));
+    console.log(DidActor);
+    setFunctionsOptions(Object.keys(DidActor.actor));
+    setService(DidActor.idl({ IDL }));
+    const fee = await DidActor.actor.transfer_fee({});
+    console.log(fee);
+  }
 
   function setCommand(command: CanisterCommandRequest) {
     if (!command) {
@@ -28,6 +57,7 @@ export default function CanisterCommandForm({
     }
   }
 
+  console.log(service);
   useEffect(() => {
     // TODO: find possible refactoring got binary aarray )
     function text2Binary(string) {
@@ -37,10 +67,13 @@ export default function CanisterCommandForm({
     }
     if (canisterId && callFunction && callProperies) {
       try {
+        console.log(JSON.parse(callProperies));
+        const args = IDL.encode(service?._fields?.find((s) => s[0] === callFunction)[1]?.argTypes, callProperies ? JSON.parse(callProperies) : "")
+        console.log(args);
         setCommand({
           canister: Principal.fromText(canisterId),
           functionName: callFunction,
-          argumentBinary: text2Binary(callProperies),
+          argumentBinary: args,
         })
         setError('');
       } catch(err) {
@@ -79,17 +112,31 @@ export default function CanisterCommandForm({
         </label>
       </div>
       <div>
+        <button onClick={loadDid}>Load did from cansiter</button>
+      </div>
+      <div>
         <label className="block">
-          Call function name
+          Canister .did file
           <input
-            type="text"
-            placeholder="Title"
+            type="file"
+            className="w-full mt-1"
+            onChange={(e) => handleFileSelect(e)}
+          />
+        </label>
+      </div>
+      <div>
+        <label className="block">
+          Select function to call
+          <select
             className="w-full mt-1"
             value={callFunction}
             onChange={(e) => setCallFunction(e.target.value)}
-            min={0}
             required
-          />
+            >
+            {
+              functionsOptions.map((opt) => <option>{opt}</option>)
+            }
+          </select>
         </label>
       </div>
       <div>
@@ -102,7 +149,6 @@ export default function CanisterCommandForm({
             value={callProperies}
             onChange={(e) => setCallProperies(e.target.value)}
             min={0}
-            required
           />
         </label>
       </div>
