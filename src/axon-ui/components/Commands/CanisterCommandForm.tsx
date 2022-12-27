@@ -40,11 +40,8 @@ export default function CanisterCommandForm({
 
   const loadDid = async () => {
     const DidActor = await fetchActor(Principal.fromText(canisterId));
-    console.log(DidActor);
     setFunctionsOptions(Object.keys(DidActor.actor));
     setService(DidActor.idl({ IDL }));
-    const fee = await DidActor.actor.transfer_fee({});
-    console.log(fee);
   }
 
   function setCommand(command: CanisterCommandRequest) {
@@ -57,7 +54,6 @@ export default function CanisterCommandForm({
     }
   }
 
-  console.log(service);
   useEffect(() => {
     if (canisterId && callFunction && callProperies) {
       try {
