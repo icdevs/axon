@@ -59,16 +59,12 @@ export default function CanisterCommandForm({
 
   console.log(service);
   useEffect(() => {
-    // TODO: find possible refactoring got binary aarray )
-    function text2Binary(string) {
-      return string.split('').map(function (char) {
-          return char.charCodeAt(0).toString(2);
-      }).join('').split('').map((bit) => parseInt(bit, 2));
-    }
     if (canisterId && callFunction && callProperies) {
       try {
-        console.log(JSON.parse(callProperies));
-        const args = IDL.encode(service?._fields?.find((s) => s[0] === callFunction)[1]?.argTypes, callProperies ? JSON.parse(callProperies) : "")
+        const args = IDL.encode(
+          service?._fields?.find((s) => s[0] === callFunction)[1]?.argTypes,
+           callProperies ? JSON.parse(callProperies) : ""
+           )
         console.log(args);
         setCommand({
           canister: Principal.fromText(canisterId),
