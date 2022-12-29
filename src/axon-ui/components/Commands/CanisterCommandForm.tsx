@@ -67,6 +67,8 @@ export default function CanisterCommandForm({
           const isReject = argInputs.some(arg => arg.isRejected());
           if (isReject) {
             console.log(isReject);
+            setError("Fill all the functions arguments");
+            return;
           }
           console.log(args);
         
