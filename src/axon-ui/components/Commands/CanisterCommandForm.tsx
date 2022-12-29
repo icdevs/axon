@@ -1,7 +1,7 @@
 import { Principal } from "@dfinity/principal";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Actor, HttpAgent, ActorSubclass } from '@dfinity/agent';
-import { IDL } from "@dfinity/candid";
+import { IDL, InputBox, renderInput } from "@dfinity/candid";
 import { fetchActor, render, getCycles, getNames } from '../../lib/candid';
 import {
   CanisterCommandRequest,
@@ -9,6 +9,8 @@ import {
 } from "../../declarations/Axon/Axon.did";
 import { useAxonById } from "../../lib/hooks/Axon/useAxonById";
 import ErrorAlert from "../Labels/ErrorAlert";
+import { Nat8 } from "@dfinity/candid/lib/cjs/idl";
+import DissolveDelayInput from "../Inputs/DissolveDelayInput";
 
 
 export default function CanisterCommandForm({
@@ -23,6 +25,8 @@ export default function CanisterCommandForm({
   const [functionsOptions, setFunctionsOptions] = useState([]);
   const [service, setService] = useState<any>();
   const [error, setError] = useState("");
+  const [argInputs, setArgInputs] = useState<Array<InputBox>>([]);
+  const inpotBlockRef = useRef(null);
 
   const handleFileSelect = (e) => {
     const did = e.target;
@@ -55,19 +59,29 @@ export default function CanisterCommandForm({
   }
 
   useEffect(() => {
-    if (canisterId && callFunction && callProperies) {
+    if (canisterId && callFunction) {
+      
       try {
-        const args = IDL.encode(
-          service?._fields?.find((s) => s[0] === callFunction)[1]?.argTypes,
-           callProperies ? JSON.parse(callProperies) : ""
-           )
-        console.log(args);
-        setCommand({
-          canister: Principal.fromText(canisterId),
-          functionName: callFunction,
-          argumentBinary: args,
-        })
-        setError('');
+
+          const args = argInputs.map(arg => arg.parse({ random: true }));
+          const isReject = argInputs.some(arg => arg.isRejected());
+          if (isReject) {
+            console.log(isReject);
+          }
+          console.log(args);
+        
+          const argsBinary = IDL.encode(
+            service?._fields?.find((s) => s[0] === callFunction)[1]?.argTypes, args)
+          
+          console.log(argsBinary);
+
+          setCommand({
+            canister: Principal.fromText(canisterId),
+            functionName: callFunction,
+            //@ts-ignore
+            argumentBinary: Array.from(argsBinary),
+          })
+          setError('');
       } catch(err) {
         console.log(err.message);
         setCommand(null);
@@ -76,7 +90,20 @@ export default function CanisterCommandForm({
     } else {
       setCommand(null);
     }
-  }, [canisterId, callFunction, callProperies]);
+  }, [canisterId, callFunction, argInputs]);
+
+  useEffect(() => {
+    if (callFunction) {
+      const inputs: InputBox[] = [];
+      service?._fields?.find((s) => s[0] === callFunction)[1]?.argTypes.forEach((arg, i) => {
+        const inputbox = renderInput(arg);
+        inputs.push(inputbox);
+        const rendered = inputbox.render(inpotBlockRef.current);
+        console.log(rendered, );
+      })
+      setArgInputs(inputs);
+    }
+  }, [callFunction]);
 
   if (!data) {
     return null;
@@ -132,17 +159,9 @@ export default function CanisterCommandForm({
         </label>
       </div>
       <div>
-        <label className="block">
           Call properties
-          <input
-            type="text"
-            placeholder="Title"
-            className="w-full mt-1"
-            value={callProperies}
-            onChange={(e) => setCallProperies(e.target.value)}
-            min={0}
-          />
-        </label>
+        <div ref={inpotBlockRef}>
+        </div>
       </div>
 
       {!!error && <ErrorAlert>{error}</ErrorAlert>}
