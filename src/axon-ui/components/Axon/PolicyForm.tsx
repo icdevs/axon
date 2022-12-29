@@ -180,6 +180,8 @@ export function PolicyForm({
     proposeThreshold,
     acceptanceThreshold,
     quorum,
+    restrictTokenTransfer,
+    allowTokenBurn,
   ]);
 
   const getPrincipalLabel = (value: string) =>
