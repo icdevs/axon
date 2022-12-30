@@ -1,7 +1,8 @@
 import { Principal } from "@dfinity/principal";
 import React, { useEffect, useRef, useState } from "react";
 import { Actor, HttpAgent, ActorSubclass } from '@dfinity/agent';
-import { IDL, InputBox, renderInput } from "@dfinity/candid";
+import { IDL, InputBox } from "@dfinity/candid";
+import { renderInput } from "../../lib/candid-ui";
 import { fetchActor, render, getCycles, getNames } from '../../lib/candid';
 import {
   CanisterCommandRequest,
@@ -63,7 +64,7 @@ export default function CanisterCommandForm({
       
       try {
 
-          const args = argInputs.map(arg => arg.parse({ random: true }));
+          const args = argInputs.map(arg => arg.parse({ random: false }));
           const isReject = argInputs.some(arg => arg.isRejected());
           if (isReject) {
             console.log(isReject);
@@ -74,8 +75,6 @@ export default function CanisterCommandForm({
         
           const argsBinary = IDL.encode(
             service?._fields?.find((s) => s[0] === callFunction)[1]?.argTypes, args)
-          
-          console.log(argsBinary);
 
           setCommand({
             canister: Principal.fromText(canisterId),
@@ -98,11 +97,14 @@ export default function CanisterCommandForm({
     if (callFunction) {
       const inputs: InputBox[] = [];
       service?._fields?.find((s) => s[0] === callFunction)[1]?.argTypes.forEach((arg, i) => {
+        console.log(arg, i, service?._fields?.find((s) => s[0] === callFunction)[1]?.argTypes);
+        console.log(arg);
         const inputbox = renderInput(arg);
         inputs.push(inputbox);
+        inpotBlockRef.current.innerHTML = "";
         const rendered = inputbox.render(inpotBlockRef.current);
-        console.log(rendered, );
       })
+      console.log(inputs);
       setArgInputs(inputs);
     }
   }, [callFunction]);
