@@ -68,8 +68,9 @@ export const CommandResponseSummary = ({
   } else {
     if ("CanisterCommand" in proposalType){
       const response = proposalType.CanisterCommand[1][0];
+      const request = proposalType.CanisterCommand[0];
       if (response) {
-        summary = <CanisterCommandResponseSummary response={response} />;
+        summary = <CanisterCommandResponseSummary response={response} request={request} />;
       }
     } else {
       const response = proposalType.NeuronCommand[1][0];

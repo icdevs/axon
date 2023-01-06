@@ -34,9 +34,10 @@ class VecForm extends InputForm {
     }
     parse(config) {
         const value = this.form.map(input => {
+            console.log(hexToBytes(input.value || ""));
             return hexToBytes(input.value || "");
-
         });
+
         return value[0];
     }
 }
