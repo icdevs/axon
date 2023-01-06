@@ -120,7 +120,7 @@ export default function CanisterCommandForm({
 
   return (
     <div className="flex flex-col gap-2 py-4">
-      <div>
+      <div style={{display: "flex", alignItems: "flex-end", gap: "8px"}}>
         <label className="block">
           Canister Id
           <input
@@ -133,9 +133,7 @@ export default function CanisterCommandForm({
             required
           />
         </label>
-      </div>
-      <div>
-        <button onClick={loadDid}>Load did from cansiter</button>
+        <button style={{flexShrink: 0, height: "42px"}} className="rounded-md leading-none inline-flex items-center justify-center btn-cta cursor-pointer p-2 h-42" onClick={loadDid}>Load did</button>
       </div>
       <div>
         <label className="block">
