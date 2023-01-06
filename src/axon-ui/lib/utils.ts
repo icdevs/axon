@@ -2,6 +2,14 @@ import { Principal } from "@dfinity/principal";
 import { Error, GovernanceError } from "../declarations/Axon/Axon.did";
 import { ErrorType } from "./governance";
 
+
+export const toJson = (data) => {
+  if (data !== undefined) {
+      return JSON.stringify(data, (_, v) => typeof v === 'bigint' ? `${v}#bigint` : v)
+          .replace(/"(-?\d+)#bigint"/g, (_, a) => a);
+  }
+}
+
 export const pluralize = (str: string, n: number) =>
   n === 1 ? str : str + "s";
 
