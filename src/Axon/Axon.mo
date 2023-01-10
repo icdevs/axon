@@ -72,6 +72,19 @@ shared ({ caller = creator }) actor class AxonService() = this {
     _Admins.addAdmin(p, caller);
   };
 
+
+  // get cycles
+  public query func cycles() : async Nat {
+    Cycles.balance();
+  };
+
+  // Changes the master.
+  public shared ({ caller }) func update_master(p : Principal) : async () {
+    assert (caller == master);
+    //assert (_Admins.isAdmin(caller));
+    master := p;
+  };
+
   // Removes the specified principal as an admin.
   public shared ({ caller }) func remove_admin(p : Principal) : async () {
     assert (caller == master);
@@ -767,7 +780,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
         #AxonCommand((command, ?Result.mapOk<(T.AxonFull, T.AxonCommandExecution), T.AxonCommandExecution, T.Error>(response, func(t) { t.1 })))
       };
       case (#CanisterCommand((command,_))) {
-        let response = await ExperimentalInternetComputer.call(command.canister, command.functionName, command.argumentBinary);
+        let response = await axon.proxy.call_raw(command.canister, command.functionName, command.argumentBinary);
         #CanisterCommand((command, ?{reply = response}));
       }
     };

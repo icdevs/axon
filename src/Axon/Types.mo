@@ -12,6 +12,7 @@ module {
   public type Proxy = actor {
     list_neurons : shared () -> async GT.ListNeuronsResponse;
     manage_neuron : shared GT.ManageNeuron -> async GT.ManageNeuronResponse;
+    call_raw : shared (Principal, Text, Blob) -> async Blob;
   };
 
   public type Neurons = {

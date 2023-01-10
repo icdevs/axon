@@ -32,7 +32,10 @@ Deploy an Axon dapp :
 ```sh
 cd src/axon-ui
 ```
-```sh
+
+Follow the instructions to add the Psycadelic context as a github package registry: https://github.com/Psychedelic/plug-inpage-provider#-installation
+
+npm i
 npm run build
 ```
 ```sh
@@ -52,6 +55,31 @@ Deploy an Axon canister:
 
 ```sh
 dfx deploy Axon --argument 'record {owner= (principal "your-principal-here"); visibility= variant{Public}}'
+```
+
+## Testing locally
+
+*(Principal of deploying identity becomes Master Admin)*
+
+Deploy an Axon dapp :
+
+```sh
+cd src/axon-ui
+```
+
+Follow the instructions to add the Psycadelic context as a github package registry: https://github.com/Psychedelic/plug-inpage-provider#-installation
+
+npm i
+npm run build_local
+```
+```sh
+npm run export_local
+```
+```sh
+cd ../..
+```
+```sh
+dfx deploy --network local
 ```
 
 Currently, canisters cannot control neurons. It is only possible to add the Axon canister as a hot key for neurons, so only commands like `Follow` and `RegisterVote` will succeed.

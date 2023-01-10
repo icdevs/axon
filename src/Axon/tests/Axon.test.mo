@@ -58,6 +58,8 @@ let suite = Suite.suite("AxonProposal", [
           proposers = #Open;
           proposeThreshold = 0;
           acceptanceThreshold = #Percent({percent = 55_000_000; quorum = null});
+          allowTokenBurn = false;
+          restrictTokenTransfer = false;
         };
       }, 0);
       let prop1 = A._applyNewStatusWithTime(prop0, 10);
@@ -71,6 +73,8 @@ let suite = Suite.suite("AxonProposal", [
       proposers = #Open;
       proposeThreshold = 0;
       acceptanceThreshold = #Percent({percent = 50_000_000; quorum = null});
+      allowTokenBurn = false;
+          restrictTokenTransfer = false;
     }, ballots), 42).status)),
     M.equals(T.text("#Accepted(+42)"))
   ),
@@ -81,6 +85,8 @@ let suite = Suite.suite("AxonProposal", [
         proposers = #Open;
         proposeThreshold = 0;
         acceptanceThreshold = #Percent({percent = 50_000_000; quorum = null});
+        allowTokenBurn = false;
+          restrictTokenTransfer = false;
       }, [
         {
           principal = p1;
@@ -107,6 +113,8 @@ let suite = Suite.suite("AxonProposal", [
         proposers = #Open;
         proposeThreshold = 0;
         acceptanceThreshold = #Percent({percent = 55_000_000; quorum = null});
+        allowTokenBurn = false;
+          restrictTokenTransfer = false;
       }, [
         {
           principal = p1;
@@ -132,6 +140,8 @@ let suite = Suite.suite("AxonProposal", [
       proposers = #Open;
       proposeThreshold = 0;
       acceptanceThreshold = #Percent({percent = 50_000_000; quorum = ?50_000_000});
+      allowTokenBurn = false;
+          restrictTokenTransfer = false;
     }, ballots), 42).status)),
     M.equals(T.text("#Accepted(+42)"))
   ),
@@ -141,6 +151,8 @@ let suite = Suite.suite("AxonProposal", [
       proposers = #Open;
       proposeThreshold = 0;
       acceptanceThreshold = #Percent({percent = 20_000_000; quorum = ?51_000_000});
+      allowTokenBurn = false;
+          restrictTokenTransfer = false;
     }, ballots), 42).status)),
     M.equals(T.text("#Active(0)"))
   ),
@@ -150,6 +162,8 @@ let suite = Suite.suite("AxonProposal", [
       proposers = #Open;
       proposeThreshold = 1;
       acceptanceThreshold = #Percent({percent = 66_000_000; quorum = ?52_000_000});
+      allowTokenBurn = false;
+          restrictTokenTransfer = false;
     }, [
       {
         principal = p1;
@@ -173,6 +187,8 @@ let suite = Suite.suite("AxonProposal", [
       proposers = #Open;
       proposeThreshold = 0;
       acceptanceThreshold = #Percent({percent = 50_000_000; quorum = ?51_000_000});
+      allowTokenBurn = false;
+          restrictTokenTransfer = false;
     }, [
       {
         principal = p1;
