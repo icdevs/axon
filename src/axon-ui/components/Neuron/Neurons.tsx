@@ -1,4 +1,4 @@
-import { useRouter } from "next/dist/client/router";
+import { useNavigate } from "react-router-dom";
 import React, { useState } from "react";
 import { BsInboxFill } from "react-icons/bs";
 import { useIsMutating } from "react-query";
@@ -32,7 +32,7 @@ export default function Neurons() {
   const isProposer = useIsProposer();
   const isMember = useIsMember();
   const axonId = useAxonId();
-  const router = useRouter();
+  const navigate = useNavigate();
   const neuronIds = useNeuronIds();
   const {
     data: rawNeurons,
@@ -66,7 +66,7 @@ export default function Neurons() {
   const neuronsByType = groupBy(neurons, "_type");
 
   return (
-    <Panel className="py-4">
+    <Panel className="py-4 custom-panel">
       <div className="px-4 flex justify-between mb-2">
         <div className="flex gap-2 items-center">
           <h2 className="text-xl font-bold">Neurons</h2>
@@ -134,7 +134,7 @@ export default function Neurons() {
                         <ListButton
                           disabled={!neuron}
                           onClick={() =>
-                            router.push(`/axon/${axonId}/neuron/${neuron._id}`)
+                            navigate(`/axon/${axonId}/neuron/${neuron._id}`)
                           }
                         >
                           <NeuronSummary

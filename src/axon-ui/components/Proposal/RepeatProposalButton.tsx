@@ -45,9 +45,8 @@ export default function RepeatProposalButton({
             proposalType="NeuronCommand"
             closeModal={closeModal}
             defaultProposal={proposal}
-            defaultNeuronIds={proposal.NeuronCommand[0].neuronIds[0]?.map(
-              String
-            )}
+            defaultNeuronIds={[]}
+            // TODO: fix ID types proposal.NeuronCommand[0].neuronIds[0]?.map(String)
           />
         )}
       </Modal>

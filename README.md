@@ -1,12 +1,14 @@
 <p align="center">
-  <img width="400" height="200" src="./src/axon-ui/public/img/axon-full-logo-bg.svg">
+  <img width="400" height="200" src="./src/axon-ui/public/img/logo.svg">
 </p>
 <p align="center">
-<i>The function of the axon is to transmit information to different neurons - <a href="https://en.wikipedia.org/wiki/Axon">Wikipedia</a></i></p>
+<i>The function of the axon is to transmit information to different neurons - <a href="https://en.wikipedia.org/wiki/Axon" target="_blank">Wikipedia</a></i></p>
 
 ---
 
 Axon is a multi-user, multi-neuron management canister.
+
+This repo is a fork of the original <a href="https://github.com/FloorLamp/axon" target="_blank">Axon project</a>, created and sponsored by <a href="https://icdevs.org/" target="_blank">ICDevs.org</a>.
 
 ## Overview
 
@@ -18,7 +20,33 @@ Axon is a multi-user, multi-neuron management canister.
 - Once the policy conditions are met, the request is forwarded to all controlled neurons
 - Axons can be public and expose all neuron data
 
-## Usage
+## Admins
+
+Only Admins can create new Axons. The Admin role can be granted to or removed from principals only by the Master Admin. The Master Admin is the principle that deploys the parent Axon dapp canister.
+
+## Deploying Axon dapp
+*(Principal of deploying identity becomes Master Admin)*
+
+Deploy an Axon dapp :
+
+```sh
+cd src/axon-ui
+```
+```sh
+npm run build
+```
+```sh
+npm run export
+```
+```sh
+cd ../..
+```
+```sh
+dfx deploy --network ic
+```
+
+## Deploying a child Axon
+*(must be an Admin)*
 
 Deploy an Axon canister:
 

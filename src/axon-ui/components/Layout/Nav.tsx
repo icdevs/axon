@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "react-router-dom";
 import React from "react";
 import { useBalance } from "../../lib/hooks/Axon/useBalance";
 import useAxonId from "../../lib/hooks/useAxonId";
@@ -16,8 +16,8 @@ export default function Nav() {
 
   return (
     <nav className="py-4 flex flex-col sm:flex-row items-center justify-between border-b border-black border-opacity-10">
-      <Link href="/">
-        <img src="/img/axon-full-logo.svg" className="h-12 cursor-pointer" />
+      <Link to="/">
+        <img src={`/img/${process.env.LOGO_ICON}`} className="h-12 cursor-pointer" />
       </Link>
       <div className="flex items-center gap-4">
         {principal && !principal.isAnonymous() && (
@@ -30,10 +30,10 @@ export default function Nav() {
             />
 
             {id && (
-              <Link href={`/axon/${id}/ledger`}>
-                <a className="text-right hover:underline">
+              <Link to={`/axon/${id}/ledger`} className="text-right hover:underline">
+                <>
                   <strong>{formatNumber(balance || 0)}</strong> AXON_{id}
-                </a>
+                </>
               </Link>
             )}
           </div>

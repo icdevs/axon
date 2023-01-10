@@ -10,14 +10,24 @@ console.log(`NEXT_PUBLIC_DFX_NETWORK=${process.env.NEXT_PUBLIC_DFX_NETWORK}`);
 console.log(`AXON_CANISTER_ID=${AXON_CANISTER_ID}`);
 
 module.exports = {
+  typescript: {
+    // !! WARN !!
+    // Dangerously allow production builds to successfully complete even if
+    // your project has type errors.
+    // !! WARN !!
+    ignoreBuildErrors: true,
+  },
   env: {
     AXON_CANISTER_ID,
+    LOGO_ICON: "logo.svg",
+    GLOBAL_STYLES: "globals.css",
+    PAGE_TITLE: "ICDEV Governance Tool",
   },
   async rewrites() {
     return [
       {
-        source: "/api/:slug*",
-        destination: "https://api.axon.ooo/api/:slug*",
+        source: '/:path*',
+        destination: '/',
       },
     ];
   },

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "react-router-dom";
 import React from "react";
 import { FiChevronRight } from "react-icons/fi";
 import { useAxonById } from "../../lib/hooks/Axon/useAxonById";
@@ -18,7 +18,7 @@ export default function TokenSummary() {
   const topHolders = ledger?.slice(0, 5).filter(([_, bal]) => bal > 0);
 
   return (
-    <Panel className="flex-1 p-4">
+    <Panel className="flex-1 p-4 custom-panel">
       <div className="xs:flex justify-between">
         <div className="flex gap-2 items-center">
           <h2 className="text-xl font-bold">Governance Summary</h2>
@@ -29,11 +29,11 @@ export default function TokenSummary() {
           />
         </div>
         <div>
-          <Link href={`/axon/${axonId}/ledger`}>
-            <a className="text-xs text-gray-800 hover:underline">
+          <Link to={`/axon/${axonId}/ledger`} className="text-xs text-gray-800 hover:underline">
+            <>
               View Ledger
               <FiChevronRight className="inline ml-0.5 text-gray-500" />
-            </a>
+            </>
           </Link>
         </div>
       </div>

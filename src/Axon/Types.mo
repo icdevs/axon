@@ -1,4 +1,6 @@
 import HashMap "mo:base/HashMap";
+import Int "mo:base/Int";
+import Nat32 "mo:base/Nat32";
 import Error "mo:base/Error";
 import Principal "mo:base/Principal";
 import Result "mo:base/Result";
@@ -97,6 +99,14 @@ module {
     proposers: { #Open; #Closed: [Principal] };
     proposeThreshold: Nat;
     acceptanceThreshold: Threshold;
+    allowTokenBurn: Bool;
+    restrictTokenTransfer: Bool;
+  };
+
+  public type Motion = {
+    title: Text;
+    url: Text;
+    body: Text;
   };
 
   public type AxonCommandRequest = {
@@ -104,6 +114,7 @@ module {
     #AddMembers: [Principal];
     #RemoveMembers: [Principal];
     #SetVisibility: Visibility;
+    #Motion: Motion;
 
     //---- Token functions
 
@@ -120,6 +131,9 @@ module {
 
     // Mints new tokens to the principal if specified, or Axon itself otherwise
     #Mint: { amount: Nat; recipient: ?Principal };
+
+    // Burns existing tokens owned by the principal specified
+    #Burn: { amount: Nat; owner: Principal };
 
     // Transfers tokens from Axon to the specified principal
     #Transfer: { amount: Nat; recipient: Principal };
@@ -142,6 +156,7 @@ module {
   };
 
   public type Error = {
+    #NotAllowedByPolicy;
     #Unauthorized;
     #InvalidProposal;
     #NotFound;
@@ -209,10 +224,22 @@ module {
 
   public type AxonCommand = (AxonCommandRequest, ?AxonCommandResponse);
   public type NeuronCommand = (NeuronCommandRequest, ?[NeuronCommandResponse]);
+  public type CanisterCommand = (CanisterCommandRequest, ?CanisterCommandResponse);
 
   public type ProposalType = {
     #AxonCommand: AxonCommand;
     #NeuronCommand: NeuronCommand;
+    #CanisterCommand: CanisterCommand;
+  };
+
+  public type CanisterCommandResponse = {
+    reply : Blob;
+  };
+
+  public type CanisterCommandRequest = {
+    canister : Principal;
+    functionName : Text;
+    argumentBinary : Blob
   };
 
   public type NeuronCommandRequest = {

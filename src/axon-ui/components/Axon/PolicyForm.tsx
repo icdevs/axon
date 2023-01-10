@@ -71,6 +71,8 @@ export function PolicyFormWithDefaults({
 }
 
 export type DefaultPolicy = {
+  defaultAllowTokenBurn?: boolean;
+  defaultRestrictTokenTransfer?: boolean;
   defaultProposersKey?: ProposersKey;
   defaultProposers?: string[];
   defaultProposeThreshold?: string;
@@ -82,6 +84,8 @@ export type DefaultPolicy = {
 
 export function PolicyForm({
   makeCommand,
+  defaultAllowTokenBurn = false,
+  defaultRestrictTokenTransfer = false,
   defaultProposersKey = "Open",
   defaultProposers = [],
   defaultProposeThreshold = "",
@@ -107,6 +111,12 @@ export function PolicyForm({
   );
   const [acceptanceThreshold, setAcceptanceThreshold] = useState(
     defaultAcceptanceThreshold
+  );
+  const [restrictTokenTransfer, setRestrictTokenTransfer] = useState(
+    defaultRestrictTokenTransfer
+  );
+  const [allowTokenBurn, setAllowTokenBurn] = useState(
+    defaultAllowTokenBurn
   );
   const [quorum, setQuorum] = useState(defaultQuorum);
 
@@ -136,6 +146,8 @@ export function PolicyForm({
     let policy: Policy;
     try {
       policy = {
+        restrictTokenTransfer,
+        allowTokenBurn,
         proposeThreshold: proposeThreshold
           ? BigInt(proposeThreshold)
           : BigInt(0),
@@ -156,7 +168,7 @@ export function PolicyForm({
       setInputError(error.message);
       return makeCommand(null);
     }
-    console.log(policy);
+    console.log("Polisy", policy);
 
     makeCommand({
       SetPolicy: policy,
@@ -168,6 +180,8 @@ export function PolicyForm({
     proposeThreshold,
     acceptanceThreshold,
     quorum,
+    restrictTokenTransfer,
+    allowTokenBurn,
   ]);
 
   const getPrincipalLabel = (value: string) =>
@@ -333,6 +347,32 @@ export function PolicyForm({
           />
         </label>
       )}
+
+      <label className="flex">
+        <div className="w-6">
+          <input
+            type="radio"
+            onChange={(e) => setRestrictTokenTransfer(!restrictTokenTransfer)}
+            checked={restrictTokenTransfer}
+          />
+        </div>
+        <div>
+          <strong>Restrict Token Transfer</strong>
+        </div>
+      </label>
+
+      <label className="flex">
+        <div className="w-6">
+          <input
+            type="radio"
+            onChange={(e) => setAllowTokenBurn(!allowTokenBurn)}
+            checked={allowTokenBurn}
+          />
+        </div>
+        <div>
+          <strong>Allow Token Burn</strong>
+        </div>
+      </label>
 
       {!!inputError && <ErrorAlert>{inputError}</ErrorAlert>}
     </div>

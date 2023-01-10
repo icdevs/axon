@@ -16,7 +16,10 @@ export default function usePropose({
 
   return useMutation(
     async (proposal: ProposalType) => {
+      console.log("MUTATED");
       const result = await tryCall(() => {
+        console.log("MUTATED");
+        console.log(proposal);
         const args = {
           axonId: BigInt(id),
           timeStart: timeStart ? [timeStart] : [],

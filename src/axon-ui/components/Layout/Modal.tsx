@@ -31,7 +31,7 @@ export default function Modal({
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <Dialog.Overlay className="fixed inset-0 backdrop-filter backdrop-brightness-50" />
+            <Dialog.Overlay className="fixed inset-0" />
           </Transition.Child>
 
           {/* This element is to trick the browser into centering the modal contents. */}
@@ -52,7 +52,7 @@ export default function Modal({
           >
             <div
               className={classNames(
-                "inline-block p-4 my-8 text-left align-middle transition-all transform bg-gray-100 dark:bg-gray-800 shadow-xl rounded-2xl",
+                "inline-block p-4 my-8 text-left align-middle border bg-white",
                 className
               )}
             >
@@ -65,7 +65,7 @@ export default function Modal({
                 </Dialog.Title>
                 <button
                   type="button"
-                  className="rounded cursor-pointer transition-colors bg-gray-100 dark:bg-gray-800 disabled:bg-gray-100 dark:disabled:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:cursor-not-allowed p-1"
+                  className="cursor-pointer"
                   onClick={closeModal}
                   ref={cancelButtonRef}
                 >

@@ -6,7 +6,9 @@ import {
 import { useAxonById } from "../../lib/hooks/Axon/useAxonById";
 import { KeysOfUnion } from "../../lib/types";
 import { AddProposersForm } from "./AddProposersForm";
+import { BurnForm } from "./BurnForm";
 import { MintForm } from "./MintForm";
+import { MotionForm } from "./MotionForm";
 import { PolicyFormWithDefaults } from "./PolicyForm";
 import { RedenominateForm } from "./RedenominateForm";
 import { RemoveProposersForm } from "./RemoveProposersForm";
@@ -22,8 +24,10 @@ const commands: [AxonCommandName, string][] = [
   ["SetVisibility", "Set Visibility"],
   ["SetPolicy", "Set Policy"],
   ["Mint", "Mint"],
+  ["Burn", "Burn"],
   ["Transfer", "Transfer"],
   ["Redenominate", "Redenominate"],
+  ["Motion", "Motion Proposal"],
 ];
 
 type AxonCommandName = KeysOfUnion<AxonCommandRequest>;
@@ -109,6 +113,17 @@ export default function AxonCommandForm({
             }
           />
         );
+      case "Burn":
+        return (
+          <BurnForm
+            makeCommand={setCommand}
+            defaults={
+              defaultCommand && "Burn" in defaultCommand
+                ? defaultCommand.Burn
+                : undefined
+            }
+          />
+        );
       case "Transfer":
         return (
           <TransferForm
@@ -131,7 +146,14 @@ export default function AxonCommandForm({
             }
           />
         );
+      case "Motion":
+        return (
+          <MotionForm
+            makeCommand={setCommand}
+          />
+        );
     }
+    return null;
   };
 
   if (!data) {

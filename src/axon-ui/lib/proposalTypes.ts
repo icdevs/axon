@@ -3,6 +3,7 @@ import { DateTime } from "luxon";
 import {
   AddHotKey,
   AxonCommandRequest,
+  CanisterCommandRequest,
   Command,
   Configure,
   Disburse,
@@ -37,7 +38,11 @@ export const proposalTypeToString = (proposal: ProposalType) => {
   if ("AxonCommand" in proposal) {
     return axonCommandToString(proposal.AxonCommand[0]);
   } else {
-    return commandToString(proposal.NeuronCommand[0].command);
+    if ("CanisterCommand" in proposal) {
+      return canisterCommandToString(proposal.CanisterCommand[0]);
+    } else {
+      return commandToString(proposal.NeuronCommand[0].command);
+    }
   }
 };
 
@@ -47,6 +52,11 @@ export const hasExecutionError = (proposal: ProposalType) => {
       ? "err" in proposal.AxonCommand[1][0]
       : false;
   } else {
+    if ("CanisterCommand" in proposal)
+      return proposal.CanisterCommand[1][0]
+        ? "err" in proposal.CanisterCommand[1][0]
+        : false;
+
     return proposal.NeuronCommand[1][0]
       ? !proposal.NeuronCommand[1][0].every(([_, reses]) =>
           reses.every((res) =>
@@ -150,7 +160,7 @@ export const commandToString = (command: Command) => {
           } = action[actionKey] as ManageNeuron;
 
           return delegatedCommand
-            ? `${id[0]?.id.toString()}: ${commandToString(delegatedCommand)}`
+            ? `${id[0]?.id.toString()}: []` // TODO: fix ${commandToString(delegatedCommand)}
             : `Manage Neuron ${id[0]?.id.toString()}: ${
                 Object.keys(delegatedCommand)[0]
               }`;
@@ -225,6 +235,13 @@ export const axonCommandToString = (command: AxonCommandRequest) => {
         : "";
       return `Mint ${formatNumber(command.Mint.amount)} tokens${to}`;
     }
+    case "Burn": {
+      assert("Burn" in command);
+      const to = command.Burn.owner
+        ? ` to ${shortPrincipal(command.Burn.owner)}`
+        : "";
+      return `Burn ${formatNumber(command.Burn.amount)} tokens${to}`;
+    }
     case "Transfer": {
       assert("Transfer" in command);
       return `Transfer ${formatNumber(
@@ -237,5 +254,17 @@ export const axonCommandToString = (command: AxonCommandRequest) => {
         command.Redenominate.from
       )} to ${formatNumber(command.Redenominate.to)}`;
     }
+    case "Motion": {
+      assert("Motion" in command);
+      return `Motion Proposal to ${command.Motion.title}`;
+    }
   }
+  return null;
+};
+
+export const canisterCommandToString = (command: CanisterCommandRequest) => {
+  const key = Object.keys(command)[0] as AxonCommandKey;
+ 
+  return `Canister Command: id:${command.canister}, call: ${command.functionName}`;
+  return null;
 };

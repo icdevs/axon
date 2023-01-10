@@ -11,6 +11,7 @@ import {
 } from "../../lib/proposalTypes";
 import { principalIsEqual } from "../../lib/utils";
 import AxonCommandSummary from "../Axon/AxonCommandSummary";
+import CanisterCommandSummary from "../Axon/CanisterCommandSummary";
 import PolicySummary from "../Axon/PolicySummary";
 import IdentifierLabelWithButtons from "../Buttons/IdentifierLabelWithButtons";
 import { RefreshButton } from "../Buttons/RefreshButton";
@@ -47,7 +48,7 @@ export const ProposalDetails = ({ proposalId }: { proposalId: string }) => {
 
   if (isError) {
     return (
-      <Panel className="mt-12 py-16 text-center text-gray-500 text-sm">
+      <Panel className="mt-12 py-16 text-center text-gray-500 text-sm custom-panel">
         Proposal {proposalId} not found
       </Panel>
     );
@@ -87,7 +88,7 @@ export const ProposalDetails = ({ proposalId }: { proposalId: string }) => {
       </div>
       <div className="pt-4 flex flex-col gap-8">
         <div className="flex flex-col md:flex-row gap-8">
-          <Panel className="p-4 flex-1">
+          <Panel className="p-4 flex-1 custom-panel">
             <div className="flex flex-col gap-1">
               <div className="flex flex-col sm:flex-row sm:justify-between gap-2 mb-2">
                 <div className="inline-flex items-center gap-2">
@@ -133,7 +134,7 @@ export const ProposalDetails = ({ proposalId }: { proposalId: string }) => {
             </div>
           </Panel>
 
-          <Panel className="p-4 flex-1">
+          <Panel className="p-4 flex-1 custom-panel">
             <div className="flex flex-col gap-1">
               <h2 className="text-xl">Policy</h2>
               {proposal && <PolicySummary policy={proposal.policy} />}
@@ -141,14 +142,14 @@ export const ProposalDetails = ({ proposalId }: { proposalId: string }) => {
           </Panel>
         </div>
 
-        <Panel>
+        <Panel className="custom-panel">
           <div className="flex flex-col gap-1">
             <h2 className="text-xl">Action</h2>
             {proposal && <ProposalTypeSummary proposal={proposal.proposal} />}
           </div>
         </Panel>
 
-        <Panel>
+        <Panel className="custom-panel">
           <div className="flex flex-col gap-2 md:gap-12 md:flex-row leading-tight divide-y divide-gray-200 md:divide-none">
             <div className="flex flex-col gap-2 md:flex-1 pb-4">
               <h2 className="text-xl">Votes</h2>
@@ -170,6 +171,9 @@ const ProposalTypeSummary = ({ proposal }: { proposal: ProposalType }) => {
   if ("AxonCommand" in proposal) {
     return <AxonCommandSummary axonCommand={proposal.AxonCommand} />;
   } else {
+    if ("CanisterCommand" in proposal)
+     return <CanisterCommandSummary canisterCommand={proposal.CanisterCommand} />
+    
     return <NeuronCommandSummary neuronCommand={proposal.NeuronCommand} />;
   }
 };

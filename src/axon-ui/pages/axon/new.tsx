@@ -10,7 +10,7 @@ export default function CreateAxonPage() {
 
   return (
     <div className=" flex flex-col gap-8 items-center pt-8">
-      <Panel className="p-8 max-w-xl">
+      <Panel className="p-8 max-w-xl custom-panel">
         {!isAuthed ? "Login to create an Axon!" : <CreateAxonForm />}
       </Panel>
     </div>

@@ -1,4 +1,4 @@
-import { useRouter } from "next/dist/client/router";
+import { useParams } from "react-router";
 import React from "react";
 import Breadcrumbs from "../../../../components/Navigation/Breadcrumbs";
 import ManageNeuronModal from "../../../../components/Neuron/ManageNeuronModal";
@@ -6,8 +6,7 @@ import NeuronDetails from "../../../../components/Neuron/NeuronDetails";
 import useAxonId from "../../../../lib/hooks/useAxonId";
 
 export default function NeuronPage() {
-  const router = useRouter();
-  const { neuronId } = router.query as { neuronId: string };
+  const { neuronId } = useParams();
   const id = useAxonId();
 
   return (

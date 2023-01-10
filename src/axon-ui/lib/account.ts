@@ -37,3 +37,18 @@ export const isAccount = (string: string) => {
 export const accountIdentifierToString = (ai: AccountIdentifier) => {
   return Buffer.from(ai.hash).toString("hex");
 };
+
+export const principalToAccountDefaultIdentifier = (principal: string) => {
+  const p = Principal.fromText(principal);
+  const subaccount = Buffer.from(Array(32).fill(0));
+  const aId = Buffer.from(
+    sha224(
+      Buffer.concat([
+        Buffer.from("\x0Aaccount-id"),
+        Buffer.from(p.toUint8Array()),
+        subaccount,
+      ])
+    )
+  );
+  return addCrc32(aId).toString("hex");
+};

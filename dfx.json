@@ -4,16 +4,12 @@
       "main": "src/Axon/Axon.mo",
       "type": "motoko"
     },
-    "staging": {
-      "main": "src/Axon/Axon.mo",
-      "type": "motoko"
-    },
     "frontend": {
       "dependencies": ["Axon"],
       "frontend": {
-        "entrypoint": "src/frontend/src/index.html"
+        "entrypoint": "src/axon-ui/out/index.html"
       },
-      "source": ["src/frontend/assets", "dist/frontend/"],
+      "source": ["src/axon-ui/out"],
       "type": "assets"
     }
   },
@@ -23,7 +19,7 @@
       "packtool": "vessel sources"
     }
   },
-  "dfx": "0.8.1",
+  "dfx": "0.12.1",
   "networks": {
     "local": {
       "bind": "127.0.0.1:8000",

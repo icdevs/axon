@@ -16,14 +16,14 @@ export default function Ledger() {
   return (
     <div className="flex flex-col gap-4 xs:gap-8">
       <section className="flex flex-col xs:flex-row gap-4 xs:gap-8">
-        <Panel className="flex-1 p-4">
+        <Panel className="flex-1 p-4 custom-panel">
           <label className="text-gray-500 uppercase text-sm">
             Total Holders
           </label>
           <h2 className="text-xl font-bold">{entries?.length || "-"}</h2>
         </Panel>
 
-        <Panel className="flex-1 p-4">
+        <Panel className="flex-1 p-4 custom-panel">
           <label className="text-gray-500 uppercase text-sm">Total Votes</label>
           <h2 className="text-xl font-bold">
             {info ? formatNumber(info.supply) : "-"}
@@ -31,7 +31,7 @@ export default function Ledger() {
         </Panel>
       </section>
 
-      <Panel>
+      <Panel className="custom-panel">
         <div className="xs:flex justify-between">
           <div className="flex gap-2 items-center">
             <h2 className="text-xl font-bold">Ledger</h2>

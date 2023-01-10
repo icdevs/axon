@@ -1,5 +1,5 @@
 import classNames from "classnames";
-import { useRouter } from "next/dist/client/router";
+import { useNavigate } from "react-router-dom";
 import React, { useState } from "react";
 import { ProposalType } from "../../declarations/Axon/Axon.did";
 import { useIsProposer } from "../../lib/hooks/Axon/useIsProposer";
@@ -12,6 +12,7 @@ import { ProposalOptionsForm } from "../Axon/ProposalOptionsForm";
 import SpinnerButton from "../Buttons/SpinnerButton";
 import NeuronCommandForm from "../Commands/NeuronCommandForm";
 import ErrorAlert from "../Labels/ErrorAlert";
+import CanisterCommandForm from "../Commands/CanisterCommandForm";
 
 export default function ProposalForm({
   closeModal,
@@ -24,7 +25,7 @@ export default function ProposalForm({
   defaultProposal?: ProposalType;
   defaultNeuronIds?: string[];
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const isOwner = useIsProposer();
   const axonId = useAxonId();
   const neuronIds = useNeuronIds();
@@ -37,10 +38,11 @@ export default function ProposalForm({
     e.preventDefault();
 
     if (isOwner && proposal) {
+      console.log(proposal);
       mutate(proposal, {
         onSuccess: (data) => {
           closeModal();
-          router.push(`/axon/${axonId}/proposal/${data.id.toString()}`);
+          navigate(`/axon/${axonId}/proposal/${data.id.toString()}`);
         },
       });
     }
@@ -73,6 +75,12 @@ export default function ProposalForm({
                 ? defaultProposal.NeuronCommand[0]
                 : undefined
             }
+          />
+        )}
+
+        {proposalType === "CanisterCommand" && (
+          <CanisterCommandForm
+            setProposal={setProposal}
           />
         )}
 

@@ -127,7 +127,7 @@ export default function LoginButton() {
   return (
     <>
       <button
-        className="px-2 py-1 rounded-md bg-white hover:shadow-lg transition-shadow transition-300"
+        className="px-2 py-1"
         onClick={isAuthed ? handleLogout : openModal}
       >
         {isAuthed ? "Logout" : "Login"}
@@ -137,7 +137,7 @@ export default function LoginButton() {
         openModal={openModal}
         closeModal={closeModal}
         title="Login"
-        className="w-52"
+        className="w-104"
       >
         <div className="flex flex-col items-stretch gap-4">
           <button
