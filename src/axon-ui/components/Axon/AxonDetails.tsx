@@ -1,5 +1,6 @@
 import { Principal } from "@dfinity/principal";
 import React from "react";
+import { principalToAccountDefaultIdentifier } from "../../lib/account"
 import { useAxonById } from "../../lib/hooks/Axon/useAxonById";
 import { useCanisterStatus } from "../../lib/hooks/Axon/useCanisterStatus";
 import useAxonId from "../../lib/hooks/useAxonId";
@@ -18,6 +19,7 @@ export default function AxonDetails() {
   const id = useAxonId();
   const status = useCanisterStatus();
   const { data, error, isFetching, refetch } = useAxonById();
+  const defaultAccount = principalToAccountDefaultIdentifier(data.proxy.toString());
 
   return (
     <Panel className="flex-1 p-4 custom-panel">
@@ -46,11 +48,19 @@ export default function AxonDetails() {
               <DataRow labelClassName="w-16" label="Axon ID">
                 {id}
               </DataRow>
-              <DataRow labelClassName="w-16" label="Proxy">
+              <DataRow labelClassName="w-16" label="Principle">
                 <IdentifierLabelWithButtons
                   type="Principal"
                   id={data.proxy as unknown as Principal}
                   showName={false}
+                />
+              </DataRow>
+              <DataRow labelClassName="w-16" label="Account">
+                <IdentifierLabelWithButtons
+                  type="Account"
+                  id={defaultAccount as unknown as string}
+                  showName={false}
+                  isShort={true}
                 />
               </DataRow>
               <DataRow labelClassName="w-16" label="Cycles">

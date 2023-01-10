@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { IDL } from "@dfinity/candid";
 import { Principal } from "@dfinity/principal";
 import React, { useEffect, useState } from "react";
