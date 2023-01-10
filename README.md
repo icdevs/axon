@@ -54,4 +54,4 @@ Deploy an Axon canister:
 dfx deploy Axon --argument 'record {owner= (principal "your-principal-here"); visibility= variant{Public}}'
 ```
 
-Currently, canisters cannot control neurons or hold ICP. It is only possible to add the Axon canister as a hot key for neurons, so only commands like `Follow` and `RegisterVote` will succeed.
+Currently, canisters cannot control neurons. It is only possible to add the Axon canister as a hot key for neurons, so only commands like `Follow` and `RegisterVote` will succeed.
