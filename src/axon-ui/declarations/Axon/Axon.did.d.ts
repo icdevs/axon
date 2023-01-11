@@ -68,6 +68,7 @@ export interface AxonService {
   'cleanup' : ActorMethod<[bigint], Result>,
   'count' : ActorMethod<[], bigint>,
   'create' : ActorMethod<[Initialization], Result_4>,
+  'cycles' : ActorMethod<[], bigint>,
   'execute' : ActorMethod<[bigint, bigint], Result_3>,
   'getActiveProposals' : ActorMethod<[bigint], ProposalResult>,
   'getAllProposals' : ActorMethod<[bigint, [] | [bigint]], ProposalResult>,
@@ -80,10 +81,13 @@ export interface AxonService {
   'ledger' : ActorMethod<[bigint], Array<LedgerEntry>>,
   'myAxons' : ActorMethod<[], Array<AxonPublic>>,
   'propose' : ActorMethod<[NewProposal], Result_3>,
+  'recycle_cycles' : ActorMethod<[bigint, bigint], bigint>,
   'remove_admin' : ActorMethod<[Principal], undefined>,
   'sync' : ActorMethod<[bigint], NeuronsResult>,
   'topAxons' : ActorMethod<[], Array<AxonPublic>>,
   'transfer' : ActorMethod<[bigint, Principal, bigint], Result>,
+  'updateSettings' : ActorMethod<[Principal, Principal], undefined>,
+  'update_master' : ActorMethod<[Principal], undefined>,
   'vote' : ActorMethod<[VoteRequest], Result>,
   'wallet_receive' : ActorMethod<[], bigint>,
 }
@@ -103,7 +107,8 @@ export interface CanisterCommandRequest {
   'canister' : Principal,
   'argumentBinary' : Uint8Array,
 }
-export interface CanisterCommandResponse { 'reply' : Uint8Array }
+export type CanisterCommandResponse = { 'error' : string } |
+  { 'reply' : Uint8Array };
 export interface CanisterStatusResult {
   'status' : { 'stopped' : null } |
     { 'stopping' : null } |
@@ -315,8 +320,10 @@ export type ProposalType = { 'NeuronCommand' : NeuronCommand } |
   { 'AxonCommand' : AxonCommand } |
   { 'CanisterCommand' : CanisterCommand };
 export interface Proxy {
+  'call_raw' : ActorMethod<[Principal, string, Uint8Array], Result__1>,
   'list_neurons' : ActorMethod<[], ListNeuronsResponse>,
   'manage_neuron' : ActorMethod<[ManageNeuron], ManageNeuronResponse>,
+  'recycle_cycles' : ActorMethod<[Principal, bigint], bigint>,
 }
 export interface RegisterVote { 'vote' : number, 'proposal' : [] | [NeuronId] }
 export interface RemoveHotKey { 'hot_key_to_remove' : [] | [Principal] }
@@ -330,6 +337,8 @@ export type Result_3 = { 'ok' : AxonProposal } |
   { 'err' : Error };
 export type Result_4 = { 'ok' : AxonPublic } |
   { 'err' : Error };
+export type Result__1 = { 'ok' : Uint8Array } |
+  { 'err' : string };
 export type RewardMode = { 'RewardToNeuron' : RewardToNeuron } |
   { 'RewardToAccount' : RewardToAccount };
 export interface RewardNodeProvider {
