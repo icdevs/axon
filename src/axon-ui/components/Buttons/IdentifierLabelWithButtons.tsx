@@ -54,7 +54,7 @@ export default function IdentifierLabelWithButtons({
   render = defaultRender,
 }: {
   className?: string;
-  type: "Principal" | "Account" | "Neuron" | "Proposal";
+  type?: "Principal" | "Account" | "Neuron" | "Proposal" | "String";
   id: Principal | string | bigint | NeuronId;
   forceShowId?: boolean;
   showName?: boolean;
@@ -98,6 +98,9 @@ export default function IdentifierLabelWithButtons({
   if (type === "Principal" || type === "Account") {
     if (type === "Principal") shortId = shortPrincipal(rawId);
     else if (type === "Account") shortId = shortAccount(rawId);
+  }
+  if (type === "STRING" || isShort) {
+    shortId = shortAccount(rawId);
   }
 
   const displayId = isShort ? shortId ?? rawId : rawId;
