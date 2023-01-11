@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { CanisterCommand } from "../../declarations/Axon/Axon.did";
 import { fetchActor } from "../../lib/candid";
 import { toJson } from "../../lib/utils";
+import IdentifierLabelWithButtons from "../Buttons/IdentifierLabelWithButtons";
 import { DataRow, DataTable } from "../Proposal/DataTable";
 
 export default function CanisterCommandSummary({
@@ -48,7 +49,14 @@ export default function CanisterCommandSummary({
             {request.functionName}
           </DataRow>
           <DataRow labelClassName="w-40" label="Canister">
-            {reqArgs || request.argumentBinary.toString()}
+            {reqArgs || (
+              <IdentifierLabelWithButtons
+              type="String"
+              id={request.argumentBinary.toString()}
+              showName={false}
+              isShort={true}
+            />
+              )}
           </DataRow>
         </DataTable>
     </div>

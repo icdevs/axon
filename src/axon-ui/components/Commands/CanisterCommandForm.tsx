@@ -25,6 +25,7 @@ export default function CanisterCommandForm({
   const [callProperies, setCallProperies] = useState("");
   const [functionsOptions, setFunctionsOptions] = useState([]);
   const [service, setService] = useState<any>();
+  const [argsBinary, setArgsBinary] = useState<any>();
   const [error, setError] = useState("");
   const [argInputs, setArgInputs] = useState<Array<InputBox>>([]);
   const inpotBlockRef = useRef(null);
@@ -59,23 +60,37 @@ export default function CanisterCommandForm({
     }
   }
 
+  const handleArgsUpdate = () => {
+    const args = argInputs.map(arg => arg.parse());
+    const isReject = argInputs.some(arg => arg.isRejected());
+    if (isReject) {
+      setError("Fill all the functions arguments");
+      return;
+    }
+  
+    const argsBinary = IDL.encode(
+      service?._fields?.find((s) => s[0] === callFunction)[1]?.argTypes, args
+    )
+
+    setArgsBinary(argsBinary);
+  }
+
   useEffect(() => {
     if (canisterId && callFunction) {
       
       try {
-
-          const args = argInputs.map(arg => arg.parse({ random: false }));
+          const args = argInputs.map(arg => arg.parse());
           const isReject = argInputs.some(arg => arg.isRejected());
           if (isReject) {
             console.log(isReject);
             setError("Fill all the functions arguments");
             return;
           }
-          console.log(args);
         
           const argsBinary = IDL.encode(
             service?._fields?.find((s) => s[0] === callFunction)[1]?.argTypes, args)
 
+            console.log(args);
           setCommand({
             canister: Principal.fromText(canisterId),
             functionName: callFunction,
@@ -91,7 +106,7 @@ export default function CanisterCommandForm({
     } else {
       setCommand(null);
     }
-  }, [canisterId, callFunction, argInputs]);
+  }, [canisterId, callFunction, argsBinary]);
 
   useEffect(() => {
     if (callFunction) {
@@ -162,8 +177,8 @@ export default function CanisterCommandForm({
       </div>
       <div>
           Call properties
-        <div ref={inpotBlockRef}>
-        </div>
+        <form onInput={handleArgsUpdate} ref={inpotBlockRef}>
+        </form>
       </div>
 
       {!!error && <ErrorAlert>{error}</ErrorAlert>}
