@@ -1,5 +1,9 @@
 import Cycles "mo:base/ExperimentalCycles";
+import Error "mo:base/Error";
 import ExperimentalInternetComputer "mo:base/ExperimentalInternetComputer";
+import Principal "mo:base/Principal";
+import Result "mo:base/Result";
+
 import GT "./GovernanceTypes";
 
 
@@ -11,6 +15,10 @@ import GT "./GovernanceTypes";
 shared actor class Proxy(owner: Principal) = this {
   let Governance = actor "rrkah-fqaaa-aaaaa-aaaaq-cai" : GT.Service;
   stable var neurons: ?GT.ListNeuronsResponse = null;
+
+  type Management = actor {
+    wallet_receive : () -> async Nat;
+  };
 
   // Accept cycles
   public func wallet_receive() : async Nat {
@@ -33,6 +41,18 @@ shared actor class Proxy(owner: Principal) = this {
     };
   };
 
+  public func recycle_cycles(caller: Principal, floor: Nat): async Nat {
+      assert(caller == owner);
+      let balance: Nat = Cycles.balance();
+      if(balance > floor ){
+        Cycles.add(balance - floor);
+        let ic : Management = actor(Principal.toText(caller));
+        let result = await ic.wallet_receive();
+        return result;
+      };
+      return 0;
+  };
+
   // Call list_neurons() and save the list of neurons that this canister controls
   public shared({ caller }) func list_neurons() : async GT.ListNeuronsResponse {
     assert(caller == owner);
@@ -48,8 +68,15 @@ shared actor class Proxy(owner: Principal) = this {
     await Governance.manage_neuron(args)
   };
 
-  public shared({ caller }) func call_raw(canister: Principal, functionName: Text, argumentBinary: Blob) : async Blob {
+
+
+  public shared({ caller }) func call_raw(canister: Principal, functionName: Text, argumentBinary: Blob) : async Result.Result<Blob, Text> {
     assert(caller == owner);
-    await ExperimentalInternetComputer.call(canister, functionName, argumentBinary);
+     
+    try{
+      #ok(await ExperimentalInternetComputer.call(canister, functionName, argumentBinary));
+    } catch(e){
+      #err(Error.message(e));
+    };
   };
 }

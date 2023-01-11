@@ -19,7 +19,7 @@ export default function AxonDetails() {
   const id = useAxonId();
   const status = useCanisterStatus();
   const { data, error, isFetching, refetch } = useAxonById();
-  const defaultAccount = principalToAccountDefaultIdentifier(data.proxy.toString());
+
 
   return (
     <Panel className="flex-1 p-4 custom-panel">
@@ -58,7 +58,7 @@ export default function AxonDetails() {
               <DataRow labelClassName="w-16" label="Account">
                 <IdentifierLabelWithButtons
                   type="Account"
-                  id={defaultAccount as unknown as string}
+                  id={principalToAccountDefaultIdentifier(data.proxy.toString()) as unknown as string}
                   showName={false}
                   isShort={true}
                 />

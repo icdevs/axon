@@ -78,6 +78,21 @@ shared ({ caller = creator }) actor class AxonService() = this {
     Cycles.balance();
   };
 
+  //update an axon's controller --needed for deleting
+  public func updateSettings(canisterId : Principal, manager : Principal) : async () {
+    let controllers : ?[Principal] = ?[canisterId, manager];
+
+    await ic.update_settings(({
+      canister_id = canisterId;
+      settings = {
+        controllers = controllers;
+        freezing_threshold = null;
+        memory_allocation = null;
+        compute_allocation = null;
+      };
+    }));
+  };
+
   // Changes the master.
   public shared ({ caller }) func update_master(p : Principal) : async () {
     assert (caller == master);
@@ -262,6 +277,13 @@ shared ({ caller = creator }) actor class AxonService() = this {
   public func wallet_receive() : async Nat {
     let amount = Cycles.available();
     Cycles.accept(amount);
+  };
+
+  // Accept cycles
+  public  shared(msg) func recycle_cycles(axonId: Nat, floor: Nat) : async Nat {
+    assert (msg.caller == master);
+    let axon = axons[axonId];
+    Cycles.accept(Cycles.available());
   };
 
   // Transfer tokens
@@ -780,8 +802,10 @@ shared ({ caller = creator }) actor class AxonService() = this {
         #AxonCommand((command, ?Result.mapOk<(T.AxonFull, T.AxonCommandExecution), T.AxonCommandExecution, T.Error>(response, func(t) { t.1 })))
       };
       case (#CanisterCommand((command,_))) {
-        let response = await axon.proxy.call_raw(command.canister, command.functionName, command.argumentBinary);
-        #CanisterCommand((command, ?{reply = response}));
+        let response = switch(await axon.proxy.call_raw(command.canister, command.functionName, command.argumentBinary)){
+          case(#ok(response)){#CanisterCommand((command, ?#reply(response)))};
+          case(#err(err)){#CanisterCommand((command, ?#error(err)))};
+        };
       }
     };
     // Re-select axon

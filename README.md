@@ -24,6 +24,10 @@ This repo is a fork of the original <a href="https://github.com/FloorLamp/axon" 
 
 Only Admins can create new Axons. The Admin role can be granted to or removed from principals only by the Master Admin. The Master Admin is the principle that deploys the parent Axon dapp canister.
 
+You may want to add your wallet principal:
+
+dfx canister --network ic call Axon add_admin '(principal "k3gvh-4fgvt-etjfk-dfpfc-we5bp-cguw5-6rrao-65iwb-ttim7-tt3bc-6qe")'
+
 ## Deploying Axon dapp
 *(Principal of deploying identity becomes Master Admin)*
 

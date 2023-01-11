@@ -1,8 +1,10 @@
 import { IDL, inputBox, InputBox, RecordForm, TupleForm, VariantForm, OptionForm, InputForm, VecForm as VecFormType } from "@dfinity/candid";
 
 function hexToBytes(hex) {
+    console.log("got hex", hex);
     for (var bytes = [], c = 0; c < hex.length; c += 2)
         bytes.push(parseInt(hex.substr(c, 2), 16));
+    console.log("returning bytes", bytes);
     return bytes;
 }
 
