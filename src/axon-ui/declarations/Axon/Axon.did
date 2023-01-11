@@ -77,6 +77,11 @@ type RewardMode =
    RewardToAccount: RewardToAccount;
    RewardToNeuron: RewardToNeuron;
  };
+type Result__1 = 
+ variant {
+   err: text;
+   ok: blob;
+ };
 type Result_4 = 
  variant {
    err: Error;
@@ -110,8 +115,10 @@ type RegisterVote =
  };
 type Proxy = 
  service {
+   call_raw: (principal, text, blob) -> (Result__1);
    list_neurons: () -> (ListNeuronsResponse);
    manage_neuron: (ManageNeuron) -> (ManageNeuronResponse);
+   recycle_cycles: (principal, nat) -> (nat);
  };
 type ProposalType = 
  variant {
@@ -404,7 +411,11 @@ type CanisterStatusResult =
              stopping;
            };
  };
-type CanisterCommandResponse = record {reply: blob;};
+type CanisterCommandResponse = 
+ variant {
+   error: text;
+   reply: blob;
+ };
 type CanisterCommandRequest = 
  record {
    argumentBinary: blob;
@@ -442,6 +453,7 @@ type AxonService =
    cleanup: (nat) -> (Result);
    count: () -> (nat) query;
    create: (Initialization) -> (Result_4);
+   cycles: () -> (nat) query;
    execute: (nat, nat) -> (Result_3);
    getActiveProposals: (nat) -> (ProposalResult) query;
    getAllProposals: (nat, opt nat) -> (ProposalResult) query;
@@ -454,10 +466,13 @@ type AxonService =
    ledger: (nat) -> (vec LedgerEntry) query;
    myAxons: () -> (vec AxonPublic) query;
    propose: (NewProposal) -> (Result_3);
+   recycle_cycles: (nat, nat) -> (nat);
    remove_admin: (principal) -> ();
    sync: (nat) -> (NeuronsResult);
    topAxons: () -> (vec AxonPublic) query;
    transfer: (nat, principal, nat) -> (Result);
+   updateSettings: (principal, principal) -> ();
+   update_master: (principal) -> ();
    vote: (VoteRequest) -> (Result);
    wallet_receive: () -> (nat);
  };

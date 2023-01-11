@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { IDL } from "@dfinity/candid";
 import { Principal } from "@dfinity/principal";
 import React, { useEffect, useState } from "react";
@@ -10,6 +9,7 @@ import { fetchActor } from "../../lib/candid";
 import { toJson } from "../../lib/utils";
 import {
   CommandSuccess,
+  CommandError,
 } from "../Proposal/CommandResponseSummary";
 
 export const CanisterCommandResponseSummary = ({
@@ -32,10 +32,15 @@ export const CanisterCommandResponseSummary = ({
     if (service) {
       try {
         const args = service?._fields?.find((s) => s[0] === request.functionName)[1]?.retTypes;
-        const b = Buffer.from(response.reply);
-        const argsDecoded = IDL.decode(args, b);
-        
-        setRespArgs(toJson(argsDecoded));
+        if ("error" in response) {
+          setRespArgs(toJson(response.error));
+        } else {
+          const b = Buffer.from(response.reply);
+          // @ts-ignore
+          const argsDecoded = IDL.decode(args, b);
+          
+          setRespArgs(toJson(argsDecoded));
+        }
       } catch (e) {
         console.log(e);
       }
@@ -47,8 +52,14 @@ export const CanisterCommandResponseSummary = ({
   }, []);
 
   return (
-    <CommandSuccess label="Success">
-      {respArgs || response.reply.toString()}
+    "error" in response ? (
+    <CommandError label="Error">
+      {respArgs || response?.error?.toString()}
+    </CommandError>
+    ) : (
+      <CommandSuccess label="Success">
+      {respArgs || response?.reply?.toString()}
     </CommandSuccess>
+    )
   )
 };
