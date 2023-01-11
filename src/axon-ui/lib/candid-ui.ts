@@ -26,8 +26,6 @@ class VecForm extends InputForm {
         this.ui = ui;
     }
     generateForm() {
-        console.log("hex!!");
-        console.log(this.ui);
         const input = this.ui.render(IDL.Text);
         input.label = "(HEX)";
         this.form = [input];
@@ -100,7 +98,6 @@ export class CustonRender extends IDL.Visitor<null, InputBox> {
         input.type = 'text';
         input.style.width = '8rem';
         input.placeholder = 'hex';
-        console.log("hex!!", ty, t);
         const form = vecForm({ input, event: 'change' });
         return inputBox(t, { form });
     }

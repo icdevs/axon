@@ -47,7 +47,7 @@ export const Subscriptions = () => {
       return status === "ExecutionQueued" || status === "ExecutionStarted";
     });
     if (executingProposals) {
-      console.log("is Executing", executingProposals);
+      // console.log("is Executing", executingProposals);
       setIsExecuting(true);
       setTimeout(activeProposals.refetch, 1000);
     } else {
