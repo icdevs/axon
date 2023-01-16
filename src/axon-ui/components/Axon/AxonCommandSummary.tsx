@@ -40,6 +40,26 @@ export default function AxonCommandSummary({
         </DataTable>
       );
     }
+    case "AddMinters":
+    case "RemoveMinters": {
+      const principals = request[key] as Array<Principal>;
+
+      return (
+        <DataTable
+          label={`${key === "AddMinters" ? "Add" : "Remove"} Minters`}
+        >
+          <DataRow labelClassName="w-20" label="Principals">
+            {principals.map((principal) => (
+              <IdentifierLabelWithButtons
+                key={principal.toText()}
+                id={principal}
+                type="Principal"
+              />
+            ))}
+          </DataRow>
+        </DataTable>
+      );
+    }
     case "SetPolicy": {
       assert("SetPolicy" in request);
       const payload = request.SetPolicy;

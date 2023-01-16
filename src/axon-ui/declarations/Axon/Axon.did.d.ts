@@ -30,7 +30,9 @@ export type AxonCommandRequest = {
   { 'Burn' : { 'owner' : Principal, 'amount' : bigint } } |
   { 'Mint' : { 'recipient' : [] | [Principal], 'amount' : bigint } } |
   { 'RemoveMembers' : Array<Principal> } |
+  { 'RemoveMinters' : Array<Principal> } |
   { 'AddMembers' : Array<Principal> } |
+  { 'AddMinters' : Array<Principal> } |
   { 'Transfer' : { 'recipient' : Principal, 'amount' : bigint } } |
   { 'SetVisibility' : Visibility } |
   { 'SetPolicy' : Policy } |
@@ -290,6 +292,8 @@ export interface Policy {
   'proposeThreshold' : bigint,
   'proposers' : { 'Open' : null } |
     { 'Closed' : Array<Principal> },
+  'minters' : { 'None' : null } |
+    { 'Minters' : Array<Principal> },
   'acceptanceThreshold' : Threshold,
 }
 export interface Proposal {

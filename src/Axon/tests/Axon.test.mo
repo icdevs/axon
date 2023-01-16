@@ -5,8 +5,12 @@ import Suite "mo:matchers/Suite";
 import M "mo:matchers/Matchers";
 import T "mo:matchers/Testable";
 
+import SB = "mo:stablebuffer/StableBuffer";
+
 import A "../AxonHelpers";
-import Types "../Types";
+import MigrationTypes "../migrations/types";
+
+let Types = MigrationTypes.CurrentAxon;
 
 let p1 = Principal.fromText("renrk-eyaaa-aaaaa-aaada-cai");
 let p2 = Principal.fromText("rno2w-sqaaa-aaaaa-aaacq-cai");
@@ -28,18 +32,18 @@ func makeActiveProposal(policy: Types.Policy, ballots: [Types.Ballot]): Types.Ax
   {
     id = 0;
     totalVotes = A._countVotes(ballots);
-    ballots = ballots;
+    ballots = SB.fromArray<Types.Ballot>(ballots);
     timeStart = 10;
     timeEnd = 100;
     creator = p1;
     proposal = #AxonCommand(#SetVisibility(#Public), null);
-    status = [#Active(0)];
+    status = SB.fromArray<Types.Status>([#Active(0)]);
     policy = policy;
   }
 };
 
-func currentStatus(s: [Types.Status]): Types.Status {
-  s[s.size() - 1]
+func currentStatus(s: SB.StableBuffer<Types.Status>): Types.Status {
+  SB.get(s, SB.size(s)-1);
 };
 
 let suite = Suite.suite("AxonProposal", [
@@ -48,18 +52,19 @@ let suite = Suite.suite("AxonProposal", [
       let prop0 = A._applyNewStatusWithTime({
         id = 0;
         totalVotes = A._countVotes(ballots);
-        ballots = ballots;
+        ballots = SB.fromArray(ballots);
         timeStart = 10;
         timeEnd = 100;
         creator = p1;
         proposal = #AxonCommand(#SetVisibility(#Public), null);
-        status = [#Created(0)];
+        status = SB.fromArray([#Created(0)]);
         policy = {
           proposers = #Open;
           proposeThreshold = 0;
           acceptanceThreshold = #Percent({percent = 55_000_000; quorum = null});
           allowTokenBurn = false;
           restrictTokenTransfer = false;
+          minters = #None;
         };
       }, 0);
       let prop1 = A._applyNewStatusWithTime(prop0, 10);
@@ -71,6 +76,7 @@ let suite = Suite.suite("AxonProposal", [
   Suite.test("only percent: auto accept",
     debug_show(currentStatus(A._applyNewStatusWithTime(makeActiveProposal({
       proposers = #Open;
+       minters = #None;
       proposeThreshold = 0;
       acceptanceThreshold = #Percent({percent = 50_000_000; quorum = null});
       allowTokenBurn = false;
@@ -83,6 +89,7 @@ let suite = Suite.suite("AxonProposal", [
     func(): Text {
       let prop0 = A._applyNewStatusWithTime(makeActiveProposal({
         proposers = #Open;
+         minters = #None;
         proposeThreshold = 0;
         acceptanceThreshold = #Percent({percent = 50_000_000; quorum = null});
         allowTokenBurn = false;
@@ -102,7 +109,12 @@ let suite = Suite.suite("AxonProposal", [
           vote = null
         }
       ]), 42);
+
+      Debug.print("only percent:  end time accept: before: " # debug_show(currentStatus(prop0.status)));
       let prop1 = A._applyNewStatusWithTime(prop0, 100);
+      Debug.print("only percent:  end time accept: after: " # debug_show(currentStatus(prop1.status)));
+      Debug.print("only percent:  end time accept: after: " # debug_show(prop1.status));
+      
       debug_show(currentStatus(prop1.status))
     }, M.equals(T.text("#Accepted(+100)"))
   ),
@@ -111,6 +123,7 @@ let suite = Suite.suite("AxonProposal", [
     func(): Text {
       let prop0 = A._applyNewStatusWithTime(makeActiveProposal({
         proposers = #Open;
+         minters = #None;
         proposeThreshold = 0;
         acceptanceThreshold = #Percent({percent = 55_000_000; quorum = null});
         allowTokenBurn = false;
@@ -130,7 +143,10 @@ let suite = Suite.suite("AxonProposal", [
           vote = null
         }
       ]), 42);
+      Debug.print("only percent: expire: before: " # debug_show(currentStatus(prop0.status)));
       let prop1 = A._applyNewStatusWithTime(prop0, 100);
+      Debug.print("only percent: expire: after: " # debug_show(currentStatus(prop1.status)));
+      Debug.print("only percent: expire: after: " # debug_show(prop1.status));
       debug_show(currentStatus(prop1.status))
     }, M.equals(T.text("#Expired(+100)"))
   ),
@@ -138,6 +154,7 @@ let suite = Suite.suite("AxonProposal", [
   Suite.test("quorum + percent: auto accept",
     debug_show(currentStatus(A._applyNewStatusWithTime(makeActiveProposal({
       proposers = #Open;
+       minters = #None;
       proposeThreshold = 0;
       acceptanceThreshold = #Percent({percent = 50_000_000; quorum = ?50_000_000});
       allowTokenBurn = false;
@@ -149,6 +166,7 @@ let suite = Suite.suite("AxonProposal", [
   Suite.test("quorum + percent: active",
     debug_show(currentStatus(A._applyNewStatusWithTime(makeActiveProposal({
       proposers = #Open;
+       minters = #None;
       proposeThreshold = 0;
       acceptanceThreshold = #Percent({percent = 20_000_000; quorum = ?51_000_000});
       allowTokenBurn = false;
@@ -160,6 +178,7 @@ let suite = Suite.suite("AxonProposal", [
   Suite.test("quorum + percent: active 2",
     debug_show(currentStatus(A._applyNewStatusWithTime(makeActiveProposal({
       proposers = #Open;
+       minters = #None;
       proposeThreshold = 1;
       acceptanceThreshold = #Percent({percent = 66_000_000; quorum = ?52_000_000});
       allowTokenBurn = false;
@@ -185,6 +204,7 @@ let suite = Suite.suite("AxonProposal", [
   Suite.test("quorum + percent: auto accept 2",
     debug_show(currentStatus(A._applyNewStatusWithTime(makeActiveProposal({
       proposers = #Open;
+       minters = #None;
       proposeThreshold = 0;
       acceptanceThreshold = #Percent({percent = 50_000_000; quorum = ?51_000_000});
       allowTokenBurn = false;

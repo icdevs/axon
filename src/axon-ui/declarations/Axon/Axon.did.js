@@ -342,7 +342,9 @@ export const idlFactory = ({ IDL }) => {
       'amount' : IDL.Nat,
     }),
     'RemoveMembers' : IDL.Vec(IDL.Principal),
+    'RemoveMinters' : IDL.Vec(IDL.Principal),
     'AddMembers' : IDL.Vec(IDL.Principal),
+    'AddMinters' : IDL.Vec(IDL.Principal),
     'Transfer' : IDL.Record({
       'recipient' : IDL.Principal,
       'amount' : IDL.Nat,

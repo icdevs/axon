@@ -1,15 +1,15 @@
 import Buffer "mo:base/Buffer";
+import Types "../migrations/types";
 
-import Types "types";
 module {
 
     ////////////
     // Types //
     //////////
     
-    public type UpgradeData = Types.UpgradeData;
+    public type UpgradeData = Types.CurrentAdmin.UpgradeData;
 
-    public class Admins(creator : Principal) : Types.Interface {
+    public class Admins(creator : Principal) : Types.CurrentAdmin.Interface {
 
         ////////////
         // State //
@@ -49,6 +49,7 @@ module {
             };
             false;
         };
+
 
         public func addAdmin(p : Principal, caller : Principal) : () {
             assert(isAdmin(caller));

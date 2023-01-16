@@ -87,3 +87,12 @@ dfx deploy --network local
 ```
 
 Currently, canisters cannot control neurons. It is only possible to add the Axon canister as a hot key for neurons, so only commands like `Follow` and `RegisterVote` will succeed.
+
+
+## Release Notes
+
+### v2.0.1
+
+* Fixed Bug that would not allow execution if not immediate.
+* Allowed step on percentage up to .000001
+* Fixed a bug where anyone could update the canister settings of a child axon.

@@ -6,12 +6,14 @@ import {
 import { useAxonById } from "../../lib/hooks/Axon/useAxonById";
 import { KeysOfUnion } from "../../lib/types";
 import { AddProposersForm } from "./AddProposersForm";
+import { AddMintersForm } from "./AddMintersForm";
 import { BurnForm } from "./BurnForm";
 import { MintForm } from "./MintForm";
 import { MotionForm } from "./MotionForm";
 import { PolicyFormWithDefaults } from "./PolicyForm";
 import { RedenominateForm } from "./RedenominateForm";
 import { RemoveProposersForm } from "./RemoveProposersForm";
+import { RemoveMintersForm } from "./RemoveMintersForm";
 import { TransferForm } from "./TransferForm";
 import { VisibilityForm } from "./VisibilityForm";
 
@@ -26,6 +28,8 @@ const commands: [AxonCommandName, string][] = [
   ["Mint", "Mint"],
   ["Burn", "Burn"],
   ["Transfer", "Transfer"],
+  ["AddMinters", "Add Minters"],
+  ["RemoveMinters", "Remove Minters"],
   ["Redenominate", "Redenominate"],
   ["Motion", "Motion Proposal"],
 ];
@@ -80,6 +84,29 @@ export default function AxonCommandForm({
             }
           />
         );
+
+        case "AddMinters":
+          return (
+            <AddMintersForm
+              makeCommand={setCommand}
+              defaults={
+                defaultCommand && "AddMinters" in defaultCommand
+                  ? defaultCommand.AddMinters
+                  : undefined
+              }
+            />
+          );
+        case "RemoveMinters":
+          return (
+            <RemoveMintersForm
+              makeCommand={setCommand}
+              defaults={
+                defaultCommand && "RemoveMinters" in defaultCommand
+                  ? defaultCommand.RemoveMinters
+                  : undefined
+              }
+            />
+          );
       case "SetVisibility":
         return (
           <VisibilityForm

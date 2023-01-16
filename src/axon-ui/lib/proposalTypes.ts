@@ -198,6 +198,24 @@ export const axonCommandToString = (command: AxonCommandRequest) => {
           : `${principals.length} principals`;
       return `Remove Proposers: ${display}`;
     }
+    case "AddMinters": {
+      assert("AddMinters" in command);
+      const principals = command.AddMinters;
+      const display =
+        principals.length <= 2
+          ? principals.map(shortPrincipal).join(", ")
+          : `${principals.length} principals`;
+      return `Add Minters: ${display}`;
+    }
+    case "RemoveMinters": {
+      assert("RemoveMinters" in command);
+      const principals = command.RemoveMinters;
+      const display =
+        principals.length <= 2
+          ? principals.map(shortPrincipal).join(", ")
+          : `${principals.length} principals`;
+      return `Remove Minters: ${display}`;
+    }
     case "SetPolicy": {
       assert("SetPolicy" in command);
       const { proposeThreshold, proposers, acceptanceThreshold } =

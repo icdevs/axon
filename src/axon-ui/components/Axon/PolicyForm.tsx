@@ -16,11 +16,17 @@ import ErrorAlert from "../Labels/ErrorAlert";
 import { useGlobalContext } from "../Store/Store";
 
 type ProposersKey = KeysOfUnion<Policy["proposers"]>;
+type MintersKey = KeysOfUnion<Policy["minters"]>;
 type ThresholdKey = KeysOfUnion<Threshold>;
 
 const proposersOptions: [ProposersKey, string][] = [
   ["Open", "Any token holder"],
   ["Closed", "Restricted"],
+];
+
+const mintersOption: [MintersKey, string][] = [
+  ["None", "None"],
+  ["Minters", "Allow List"],
 ];
 
 export function PolicyFormWithDefaults({
@@ -45,6 +51,13 @@ export function PolicyFormWithDefaults({
             : []
         }
         defaultProposeThreshold={policy.proposeThreshold.toString()}
+        defaultMintersKey={Object.keys(policy.minters)[0] as MintersKey}
+        defaultMinters={
+          "Minters" in policy.minters
+            ? policy.minters.Minters.map((p) => p.toText())
+            : []
+        }
+
         defaultAcceptanceThresholdKey={
           Object.keys(policy.acceptanceThreshold)[0] as ThresholdKey
         }
@@ -75,6 +88,8 @@ export type DefaultPolicy = {
   defaultRestrictTokenTransfer?: boolean;
   defaultProposersKey?: ProposersKey;
   defaultProposers?: string[];
+  defaultMintersKey?: MintersKey;
+  defaultMinters?: string[];
   defaultProposeThreshold?: string;
   defaultAcceptanceThresholdKey?: ThresholdKey;
   defaultAcceptanceThreshold?: string;
@@ -88,6 +103,8 @@ export function PolicyForm({
   defaultRestrictTokenTransfer = false,
   defaultProposersKey = "Open",
   defaultProposers = [],
+  defaultMintersKey = "None",
+  defaultMinters = [],
   defaultProposeThreshold = "",
   defaultAcceptanceThresholdKey = "Absolute",
   defaultAcceptanceThreshold = "",
@@ -102,6 +119,7 @@ export function PolicyForm({
   const { principalName } = useNames();
   const [users, setUsers] = useState(defaultProposers);
   const [proposers, setProposers] = useState<ProposersKey>(defaultProposersKey);
+  const [minters, setMinters] = useState<MintersKey>(defaultMintersKey);
   const [inputError, setInputError] = useState("");
   const [proposeThreshold, setProposeThreshold] = useState(
     defaultProposeThreshold
@@ -123,6 +141,27 @@ export function PolicyForm({
   useEffect(() => {
     setInputError("");
 
+
+    let mintersValue: Policy["minters"];
+    if (minters === "Minters") {
+      if (!users.length) {
+        return makeCommand(null);
+      }
+
+      let members: Principal[];
+      try {
+        members = users.map((value) => Principal.fromText(value));
+      } catch (err) {
+        setInputError(`Invalid principal: ${err.message}`);
+        return makeCommand(null);
+      }
+      mintersValue = {
+        Minters: members,
+      };
+    } else {
+      mintersValue = { None: null };
+    }
+
     let proposersValue: Policy["proposers"];
     if (proposers === "Closed") {
       if (!users.length) {
@@ -143,6 +182,8 @@ export function PolicyForm({
       proposersValue = { Open: null };
     }
 
+    
+
     let policy: Policy;
     try {
       policy = {
@@ -152,6 +193,7 @@ export function PolicyForm({
           ? BigInt(proposeThreshold)
           : BigInt(0),
         proposers: proposersValue,
+        minters: mintersValue,
         acceptanceThreshold:
           threshold === "Absolute"
             ? {
@@ -168,7 +210,7 @@ export function PolicyForm({
       setInputError(error.message);
       return makeCommand(null);
     }
-    console.log("Polisy", policy);
+    console.log("Policy", policy);
 
     makeCommand({
       SetPolicy: policy,
@@ -242,6 +284,48 @@ export function PolicyForm({
         </label>
       )}
 
+
+      <label className="block">
+        <span className="flex items-center">
+          Minters
+          <span
+            aria-label="Who is eligible to mint/burn"
+            data-balloon-pos="right"
+            data-balloon-length="large"
+          >
+            <BiInfoCircle className="ml-1 text-gray-500 cursor-help" />
+          </span>
+        </span>
+        <select
+          name="minters"
+          className="w-full mt-1"
+          onChange={(e) => setMinters(e.target.value as MintersKey)}
+          value={minters}
+        >
+          {mintersOption.map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      {minters === "Minters" && (
+        <label className="block">
+          <CreatableSelect
+            className="react-select"
+            placeholder="Select minters..."
+            isMulti={true}
+            onChange={(values) => setUsers(values.map(({ value }) => value))}
+            options={principals}
+            defaultValue={users.map((value) => ({
+              value,
+              label: getPrincipalLabel(value),
+            }))}
+          />
+        </label>
+      )}
+
       <label className="block">
         <div className="flex justify-between">
           <span className="flex items-center">
@@ -292,6 +376,7 @@ export function PolicyForm({
         <div className="flex">
           <input
             type="number"
+            step="0.000001"
             placeholder="Acceptance Threshold"
             className="w-full mt-1"
             value={acceptanceThreshold}
@@ -338,6 +423,7 @@ export function PolicyForm({
           </div>
           <input
             type="number"
+            step="0.000001"
             placeholder="Quorum"
             className="w-full mt-1"
             value={quorum}

@@ -5,7 +5,26 @@ let Package =
 let
   -- This is where you can add your own packages to the package-set
   additions =
-    [] : List Package
+    [{ name = "map_7_0_0"
+  , repo = "https://github.com/ZhenyaUsenko/motoko-hash-map"
+  , version = "v7.0.0"
+  , dependencies = [ "base"]
+  },
+  { name = "map"
+  , repo = "https://github.com/ZhenyaUsenko/motoko-hash-map"
+  , version = "v7.0.0"
+  , dependencies = [ "base"]
+  },
+  { name = "stablebuffer_0_2_0"
+  , repo = "https://github.com/skilesare/StableBuffer"
+  , version = "v0.2.0"
+  , dependencies = [ "base"]
+  },
+  { name = "stablebuffer"
+  , repo = "https://github.com/skilesare/StableBuffer"
+  , version = "v0.2.0"
+  , dependencies = [ "base"]
+  }] : List Package
 
 let
   {- This is where you can override existing packages in the package-set

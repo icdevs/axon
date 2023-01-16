@@ -14,11 +14,15 @@ import Prelude "mo:base/Prelude";
 import Prim "mo:prim";
 import Principal "mo:base/Principal";
 import Result "mo:base/Result";
-import T "./Types";
+import MigrationTypes "migrations/types";
 import Time "mo:base/Time";
 import TrieSet "mo:base/TrieSet";
 
+import SB "mo:stablebuffer/StableBuffer";
+
 module {
+  let T = MigrationTypes.CurrentAxon;
+
   public func _countVotes(ballots: [T.Ballot]): T.Votes {
     Array.foldLeft<T.Ballot, T.Votes>(
       ballots, { yes = 0; no = 0; notVoted = 0}, func(sums, {vote; votingPower}) {
@@ -44,7 +48,7 @@ module {
       case (#Created(_)) {
         if (now >= proposal.timeStart) {
           // Activate voting and check ballots
-          Debug.print("Proposal " # debug_show(proposal.id) # " new status=" # debug_show(#Active(now)));
+          Debug.print("_applyNewStatusWithTime:Proposal " # debug_show(proposal.id) # " new status=" # debug_show(#Active(now)));
           return _applyNewStatusWithTime(
             withNewStatus(proposal, #Active(now)),
             now
@@ -72,35 +76,39 @@ module {
     let totalVotingPower = yes + no + notVoted;
 
     // First, calculate quorum if required, and the absolute threshold
-    let (quorumVotes, absoluteThresholdVotes) = switch (proposal.policy.acceptanceThreshold) {
+    let (quorumVotes, absoluteThresholdVotes, currentPercent) = switch (proposal.policy.acceptanceThreshold) {
       case (#Percent({ percent; quorum })) {
+        Debug.print("need percent " # debug_show(percent));
         switch (quorum) {
           case (?quorum_) {
             let quorumVotes = percentOf(quorum_, totalVotingPower);
-            (quorumVotes, percentOf(percent, quorumVotes))
+            (quorumVotes, percentOf(percent, totalVotingPower), percentOf(percent, yes+no))
           };
-          case _ { (0, percentOf(percent, totalVotingPower)) };
+          case _ { (0, percentOf(percent, totalVotingPower), percentOf(percent, yes+no)) };
         }
       };
-      case (#Absolute(amount)) { (0, amount) };
+      case (#Absolute(amount)) { (0, amount, percentOf(yes, yes+no)) };
     };
-    // Debug.print("totalVotes: " # debug_show(proposal.totalVotes) # " quorumVotes: " # debug_show(quorumVotes) # " absoluteThresholdVotes: " # debug_show(absoluteThresholdVotes));
+    Debug.print("totalVotes: " # debug_show(proposal.totalVotes) # " quorumVotes: " # debug_show(quorumVotes) # " absoluteThresholdVotes: " # debug_show(absoluteThresholdVotes) # " current pecent: " # debug_show(currentPercent));
     let maybeNewStatus = if (yes >= absoluteThresholdVotes and (yes + no) >= quorumVotes) {
       // Accept if we have exceeded the absolute threshold
       ?(#Accepted(now));
-    } else {
+    } else if(now >= proposal.timeEnd and yes >= currentPercent and (yes + no) >= quorumVotes){
+      ?(#Accepted(now));
+    }else {
       switch (proposal.policy.acceptanceThreshold) {
         case (#Percent({ percent; quorum })) {
           if (now >= proposal.timeEnd) {
-            // Voting has ended, accept if yes votes exceed the required threshold
+            // Voting has ended, accept if yes percent exceed the required threshold
             let totalVotes = no + yes;
             let thresholdOfVoted = percentOf(percent, totalVotes);
-            if (totalVotes >= quorumVotes and yes >= thresholdOfVoted) {
+            let yesPercentVoted = percentOf(yes, totalVotes);
+            if (totalVotes >= quorumVotes and yesPercentVoted > percent) {
               ?(#Accepted(now));
             } else {
               ?(#Expired(now));
             }
-          } else if (absoluteThresholdVotes > yes + notVoted) {
+          } else if (percentOf(no, totalVotingPower) > percent) {
             // Reject if we cannot reach the absolute threshold
             ?(#Rejected(now));
           } else {
@@ -142,17 +150,8 @@ module {
   };
 
   public func withNewStatus(proposal: T.AxonProposal, status: T.Status): T.AxonProposal {
-    {
-      id = proposal.id;
-      totalVotes = proposal.totalVotes;
-      ballots = proposal.ballots;
-      timeStart = proposal.timeStart;
-      timeEnd = proposal.timeEnd;
-      creator = proposal.creator;
-      proposal = proposal.proposal;
-      status = Array.append(proposal.status, [status]);
-      policy = proposal.policy;
-    }
+    SB.add(proposal.status, status);
+    proposal;
   };
 
   public func isCancellable(s: T.Status): Bool {
@@ -164,8 +163,8 @@ module {
     }
   };
 
-  public func currentStatus(s: [T.Status]): T.Status {
-    s[s.size() - 1]
+  public func currentStatus(s: SB.StableBuffer<T.Status>): T.Status {
+    SB.get(s, SB.size(s)-1);
   };
 
   func percentOf(percent: Nat, n: Nat): Nat {

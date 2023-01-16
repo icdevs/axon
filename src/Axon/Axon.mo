@@ -17,21 +17,47 @@ import Result "mo:base/Result";
 import Time "mo:base/Time";
 import TrieSet "mo:base/TrieSet";
 
+import SB "mo:stablebuffer/StableBuffer";
+import Map "mo:map/Map";
+
 import Admins "admins";
 
 import Arr "./Array";
 import GT "./GovernanceTypes";
 import IC "./IcManagementTypes";
-import T "./Types";
+
 import Proxy "./Proxy";
 import A "./AxonHelpers";
+import T "migrations/v002_000_000/axon_types";
+
+import MigrationTypes "./migrations/types";
+import Migrations "./migrations";
 
 shared ({ caller = creator }) actor class AxonService() = this {
+  let { ihash; nhash; thash; phash; calcHash } = Map;
   // ---- State
 
-  stable var axonEntries_pre: [T.AxonEntries_pre] = [];
+  stable var axonEntries_pre: [T.AxonEntries] = [];
   stable var axonEntries_post: [T.AxonEntries] = [];
-  var axons: [var T.AxonFull] = [var];
+
+
+  stable var _AdminsUD : ?Admins.UpgradeData = null;
+  let _Admins = Admins.Admins(creator);
+
+  stable var migration_state: MigrationTypes.State = #v0_0_0(#data);
+
+  // Do not forget to change #v0_1_0 when you are adding a new migration
+  // If you use one previous state in place of #v0_1_0 it will run downgrade methods instead
+  migration_state := Migrations.migrate(migration_state, #v2_0_1(#id), {creator = creator; init_axons = axonEntries_pre; init_admins= _AdminsUD});
+
+  let #v2_0_1(#data(state_current)) = migration_state;
+
+  stable var admin = creator;
+
+  let CurrentTypes = MigrationTypes.CurrentAxon;
+
+
+
 
   // ---- Constants
 
@@ -48,11 +74,11 @@ shared ({ caller = creator }) actor class AxonService() = this {
   let MAXIMUM_FUTURE_START = 7 * 24 * 60 * 60;
 
 
+
+
   // ---- Administrator Role
   stable var master : Principal = creator;
 
-  stable var _AdminsUD : ?Admins.UpgradeData = null;
-  let _Admins = Admins.Admins(creator);
 
   // Returns a boolean indicating if the specified principal is an admin.
   public query func is_admin(p : Principal) : async Bool {
@@ -79,7 +105,8 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   //update an axon's controller --needed for deleting
-  public func updateSettings(canisterId : Principal, manager : Principal) : async () {
+  public shared({caller}) func updateSettings(canisterId : Principal, manager : Principal) : async () {
+    assert (caller == master);
     let controllers : ?[Principal] = ?[canisterId, manager];
 
     await ic.update_settings(({
@@ -107,14 +134,78 @@ shared ({ caller = creator }) actor class AxonService() = this {
     _Admins.removeAdmin(p, caller);
   };
 
+  //let a minter mint
+  public shared ({ caller }) func mint(axonId: Nat, p : Principal, a: Nat) : async CurrentTypes.Result<CurrentTypes.AxonCommandExecution> {
+    
+    let axon = SB.get(state_current.axons, axonId);
+    switch(axon.policy.minters){
+      case(#None) return #err(#Unauthorized);
+      case(#Minters(val)){
+        var found : ?Principal = null;
+        label search for(thisItem in val.vals()){
+          if(thisItem == caller){
+            found := ?caller;
+            break search;
+          };
+        };
+        if(?found == null){return #err(#Unauthorized) };
+      };
+    };
+
+    let command : CurrentTypes.AxonCommandRequest =  #Mint({amount = a; recipient = ?p});
+    let response = _applyAxonCommand(axon, command);
+
+    switch(response){
+      case(#ok(val)){
+        #ok(val.1);
+      };
+      case(#err(err)){
+        #err(err);
+      };
+    }
+  };
+
+  //let a minter mint
+  public shared ({ caller }) func burn(axonId: Nat, p : Principal, a: Nat) : async CurrentTypes.Result<CurrentTypes.AxonCommandExecution> {
+    
+    let axon = SB.get(state_current.axons, axonId);
+    switch(axon.policy.minters){
+      case(#None) return #err(#Unauthorized);
+      case(#Minters(val)){
+        var found : ?Principal = null;
+        label search for(thisItem in val.vals()){
+          if(thisItem == caller){
+            found := ?caller;
+            break search;
+          };
+        };
+        if(?found == null){return #err(#Unauthorized) };
+      };
+    };
+
+    let command : CurrentTypes.AxonCommandRequest =  #Burn({amount = a; owner = p});
+    let response = _applyAxonCommand(axon, command);
+
+    switch(response){
+      case(#ok(val)){
+        #ok(val.1);
+      };
+      case(#err(err)){
+        #err(err);
+      };
+    }
+  };
+
+  
+
   //---- Public queries
 
   public query func count() : async Nat {
-    axons.size()
+    SB.size(state_current.axons);
   };
 
-  public query func topAxons() : async [T.AxonPublic] {
-    let filtered = Array.mapFilter<T.AxonFull, T.AxonPublic>(Array.freeze(axons), func(axon) {
+  public query func topAxons() : async [CurrentTypes.AxonPublic] {
+    let filtered = Array.mapFilter<CurrentTypes.AxonFull, CurrentTypes.AxonPublic>(SB.toArray(state_current.axons), func(axon) {
       switch (axon.visibility, axon.neurons) {
         case (#Public, ?{response={full_neurons}}) {
           ?getAxonPublic(axon)
@@ -122,18 +213,18 @@ shared ({ caller = creator }) actor class AxonService() = this {
         case _ { null }
       }
     });
-    Array.sort<T.AxonPublic>(filtered, func (a, b) {
+    Array.sort<CurrentTypes.AxonPublic>(filtered, func (a, b) {
       if (b.totalStake > a.totalStake) { #greater } else { #less }
     });
   };
 
-  public query func axonById(id: Nat) : async T.AxonPublic {
-    let axon = axons[id];
+  public query func axonById(id: Nat) : async CurrentTypes.AxonPublic {
+    let axon = SB.get(state_current.axons, id);
     getAxonPublic(axon)
   };
 
   public shared func axonStatusById(id: Nat) : async IC.CanisterStatusResult {
-    let axon = axons[id];
+    let axon = SB.get(state_current.axons, id);
     await ic.canister_status({ canister_id = Principal.fromActor(axon.proxy) });
   };
 
@@ -142,14 +233,14 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   public query({ caller }) func balanceOf(id: Nat, principal: ?Principal) : async Nat {
-    let {ledger} = axons[id];
-    Option.get(ledger.get(Option.get(principal, caller)), 0)
+    let {ledger} = SB.get(state_current.axons, id);
+    Option.get(Map.get(ledger, phash, Option.get(principal, caller)), 0)
   };
 
-  public query({ caller }) func ledger(id: Nat) : async [T.LedgerEntry] {
-    let {ledger} = axons[id];
+  public query({ caller }) func ledger(id: Nat) : async [CurrentTypes.LedgerEntry] {
+    let {ledger} = SB.get(state_current.axons, id);
     // sort descending
-    Array.sort<T.LedgerEntry>(Iter.toArray(ledger.entries()), func (a, b) {
+    Array.sort<CurrentTypes.LedgerEntry>(Iter.toArray(Map.entries<Principal, Nat>(ledger)), func (a, b) {
       if (b.1 > a.1) { #greater } else { #less }
     });
   };
@@ -157,9 +248,9 @@ shared ({ caller = creator }) actor class AxonService() = this {
   //---- Permissioned queries
 
   // Get axons where caller has balance
-  public query({ caller }) func myAxons() : async [T.AxonPublic] {
-    Array.mapFilter<T.AxonFull, T.AxonPublic>(Array.freeze(axons), func(axon) {
-      switch (axon.ledger.get(caller)) {
+  public query({ caller }) func myAxons() : async [CurrentTypes.AxonPublic] {
+    Array.mapFilter<CurrentTypes.AxonFull, CurrentTypes.AxonPublic>(SB.toArray<CurrentTypes.AxonFull>(state_current.axons), func(axon) {
+      switch (Map.get(axon.ledger, phash, caller)) {
         case (?balance) {
           if (balance > 0) { ?getAxonPublic(axon) }
           else { null }
@@ -170,8 +261,8 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   // Get all full neurons. If private, only owners can call
-  public query({ caller }) func getNeurons(id: Nat) : async T.NeuronsResult {
-    let { visibility; ledger; neurons } = axons[id];
+  public query({ caller }) func getNeurons(id: Nat) : async CurrentTypes.NeuronsResult {
+    let { visibility; ledger; neurons } = SB.get(state_current.axons, id);
     if (visibility == #Private and not isAuthed(caller, ledger)) {
       return #err(#Unauthorized)
     };
@@ -185,79 +276,104 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   // Get single proposal. If private, only owners can call
-  public query({ caller }) func getProposalById(axonId: Nat, proposalId: Nat) : async T.Result<T.AxonProposal> {
-    let { visibility; ledger; activeProposals; allProposals } = axons[axonId];
+  public query({ caller }) func getProposalById(axonId: Nat, proposalId: Nat) : async CurrentTypes.Result<CurrentTypes.AxonProposalPublic> {
+    let { visibility; ledger; activeProposals; allProposals } = SB.get(state_current.axons, axonId);
     if (visibility == #Private and not isAuthed(caller, ledger)) {
       return #err(#Unauthorized)
     };
 
-    switch (Array.find<T.AxonProposal>(activeProposals, func(p) { p.id == proposalId })) {
+    switch (Array.find<CurrentTypes.AxonProposal>(SB.toArray(activeProposals), func(p) { p.id == proposalId })) {
       case (?found) {
-        #ok(found);
+        #ok({found with
+          ballots = SB.toArray(found.ballots);
+          status = SB.toArray(found.status);
+        }
+        );
       };
       case _ {
-        Result.fromOption(Array.find<T.AxonProposal>(allProposals, func(p) { p.id == proposalId }), #NotFound);
+        let item = Array.find<CurrentTypes.AxonProposal>(SB.toArray(allProposals), func(p) { p.id == proposalId });
+        switch(item){
+          case(null) #err(#NotFound);
+          case(?item) #ok{item with
+          ballots = SB.toArray(item.ballots);
+          status = SB.toArray(item.status)};
+        };
       }
-    }
+    };
   };
 
   // Get all active proposals. If private, only owners can call
-  public query({ caller }) func getActiveProposals(id: Nat) : async T.ProposalResult {
-    let { visibility; ledger; activeProposals } = axons[id];
+  public query({ caller }) func getActiveProposals(id: Nat) : async CurrentTypes.ProposalResult {
+    let { visibility; ledger; activeProposals } = SB.get(state_current.axons, id);
     if (visibility == #Private and not isAuthed(caller, ledger)) {
       return #err(#Unauthorized)
     };
 
-    #ok(activeProposals)
+    #ok(Array.map<CurrentTypes.AxonProposal, CurrentTypes.AxonProposalPublic>(SB.toArray<CurrentTypes.AxonProposal>(activeProposals), func(p) : CurrentTypes.AxonProposalPublic{
+      {p with
+        ballots = SB.toArray(p.ballots);
+        status = SB.toArray(p.status);
+      };
+    }
+    ));
   };
 
   // Get last 100 proposals, optionally before the specified id. If private, only owners can call
-  public query({ caller }) func getAllProposals(id: Nat, before: ?Nat) : async T.ProposalResult {
-    let { visibility; ledger; allProposals } = axons[id];
+  public query({ caller }) func getAllProposals(id: Nat, before: ?Nat) : async CurrentTypes.ProposalResult {
+    let { visibility; ledger; allProposals } = SB.get(state_current.axons, id);
     if (visibility == #Private and not isAuthed(caller, ledger)) {
       return #err(#Unauthorized)
     };
 
     let filtered = switch(before) {
       case (?before_) {
-        Array.filter<T.AxonProposal>(allProposals, func(p) {
+        Array.filter<CurrentTypes.AxonProposal>(SB.toArray(allProposals), func(p) {
           p.id < before_
         });
       };
-      case null { allProposals }
+      case null { SB.toArray(allProposals) }
     };
     let size = filtered.size();
     if (size == 0) {
       return #ok([]);
     };
 
-    #ok(Array.tabulate<T.AxonProposal>(Nat.min(100, size), func (i) {
-      filtered.get(size - i - 1);
+    #ok(Array.tabulate<CurrentTypes.AxonProposalPublic>(Nat.min(100, size), func (i) {
+      let items = filtered.get(size - i - 1);
+
+      {items with
+       ballots = SB.toArray(items.ballots);
+        status = SB.toArray(items.status);
+      };
+      
     }));
   };
 
   // Get all motion proposals
-  public query({ caller }) func getMotionProposals(id: Nat) : async T.ProposalResult {
-    let { visibility; ledger; allProposals } = axons[id];
+  public query({ caller }) func getMotionProposals(id: Nat) : async CurrentTypes.ProposalResult {
+    let { visibility; ledger; allProposals } = SB.get(state_current.axons, id);
     if (visibility == #Private and not isAuthed(caller, ledger)) {
       return #err(#Unauthorized)
     };
 
     // Filters to only Motion proposals
-    let filtered = Array.filter<T.AxonProposal>(allProposals, func(p) {
+    let filtered = Array.mapFilter<CurrentTypes.AxonProposal, CurrentTypes.AxonProposalPublic>(SB.toArray(allProposals), func(p) {
       switch(p.proposal) {
         case (#AxonCommand((command,_))) {
           switch (command) {
             case (#Motion(motion)) {
-              return true;
+              return ?{p with
+                ballots = SB.toArray(p.ballots);
+                status = SB.toArray(p.status);
+              };
             };
             case _ {
-              return false;
+              return null;
             };
           };
         };
         case _ {
-          return false
+          return null
         };
       };
     });
@@ -282,28 +398,28 @@ shared ({ caller = creator }) actor class AxonService() = this {
   // Accept cycles
   public  shared(msg) func recycle_cycles(axonId: Nat, floor: Nat) : async Nat {
     assert (msg.caller == master);
-    let axon = axons[axonId];
+    let axon = SB.get(state_current.axons, axonId);
     Cycles.accept(Cycles.available());
   };
 
   // Transfer tokens
-  public shared({ caller }) func transfer(id: Nat, dest: Principal, amount: Nat) : async T.Result<()> {
+  public shared({ caller }) func transfer(id: Nat, dest: Principal, amount: Nat) : async CurrentTypes.Result<()> {
     // Verify if token tranfers are allowed for members in the Axon policy
     assert tokenTransfersAllowed(id);
 
-    let {ledger} = axons[id];
-    let balance = Option.get(ledger.get(caller), 0);
+    let {ledger} = SB.get(state_current.axons, id);
+    let balance = Option.get(Map.get(ledger, phash, caller), 0);
     if (amount > balance) {
       #err(#InsufficientBalance)
     } else {
-      ledger.put(caller, balance - amount);
-      ledger.put(dest, Option.get(ledger.get(dest), 0) + amount);
+      Map.set(ledger, phash, caller, balance - amount);
+      Map.set(ledger, phash, dest, Option.get(Map.get(ledger,phash, dest), 0) + amount);
       #ok
     }
   };
 
   // Create a new Axon
-  public shared({ caller }) func create(init: T.Initialization) : async T.Result<T.AxonPublic> {
+  public shared({ caller }) func create(init: CurrentTypes.Initialization) : async CurrentTypes.Result<CurrentTypes.AxonPublic> {
     // Verify that the caller has the Administrator role
     assert (_Admins.isAdmin(caller));
 
@@ -314,27 +430,28 @@ shared ({ caller = creator }) actor class AxonService() = this {
 
     let supply = Array.foldLeft<(Principal,Nat), Nat>(init.ledgerEntries, 0, func(sum, c) { sum + c.1 });
     Cycles.add(1_000_000_000_000);
-    let axon: T.AxonFull = {
-      id = axons.size();
+    let axon: CurrentTypes.AxonFull = {
+      id = SB.size(state_current.axons);
       proxy = await Proxy.Proxy(Principal.fromActor(this));
       name = init.name;
       visibility = init.visibility;
       policy = init.policy;
       supply = supply;
-      ledger = HashMap.fromIter<Principal, Nat>(init.ledgerEntries.vals(), init.ledgerEntries.size(), Principal.equal, Principal.hash);
+      ledger = Map.fromIter<Principal, Nat>(init.ledgerEntries.vals(), phash);
       neurons = null;
       totalStake = 0;
-      allProposals = [];
-      activeProposals = [];
-      lastProposalId = 0;
+      allProposals = SB.init<CurrentTypes.AxonProposal>();
+      activeProposals = SB.init<CurrentTypes.AxonProposal>();
+      var lastProposalId = 0;
     };
-    axons := Array.thaw(Array.append(Array.freeze(axons), [axon]));
+
+    SB.add(state_current.axons, axon);
     #ok(getAxonPublic(axon))
   };
 
   // Submit a new Axon proposal
-  public shared({ caller }) func propose(request: T.NewProposal) : async T.Result<T.AxonProposal> {
-    let axon = axons[request.axonId];
+  public shared({ caller }) func propose(request: CurrentTypes.NewProposal) : async CurrentTypes.Result<CurrentTypes.AxonProposalPublic> {
+    let axon = SB.get(state_current.axons, request.axonId);
     if (not isAuthed(caller, axon.ledger)) {
       return #err(#Unauthorized);
     };
@@ -350,7 +467,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
     };
 
     // Check that caller has enough balance to propose
-    if (Option.get(axon.ledger.get(caller), 0) < axon.policy.proposeThreshold) {
+    if (Option.get(Map.get(axon.ledger, phash, caller), 0) < axon.policy.proposeThreshold) {
       return #err(#InsufficientBalanceToPropose);
     };
 
@@ -379,21 +496,22 @@ shared ({ caller = creator }) actor class AxonService() = this {
     };
 
     // Snapshot the ledger at creation
-    let ballots = Array.map<T.LedgerEntry, T.Ballot>(Iter.toArray(axon.ledger.entries()), func((p,n)) {
+    //todo: Convert to map
+    let ballots = SB.fromArray<CurrentTypes.Ballot>(Array.map<CurrentTypes.LedgerEntry, CurrentTypes.Ballot>(Iter.toArray(Map.entries(axon.ledger)), func((p,n)) {
       {
         principal = p;
         votingPower = n;
         // Auto vote for caller
         vote = if (p == caller) { ?(#Yes) } else { null };
       }
-    });
+    }));
     let now = Time.now();
     let timeStart = clamp(
       Option.get(Option.map(request.timeStart, secsToNanos), now),
       now, now + secsToNanos(MAXIMUM_FUTURE_START)
     );
     // Create the proposal, count ballots, then execute if conditions are met
-    let newProposal: T.AxonProposal = A._applyExecutingStatusConditionally(A._applyNewStatus({
+    let newProposal: CurrentTypes.AxonProposal = A._applyExecutingStatusConditionally(A._applyNewStatus({
       id = axon.lastProposalId;
       timeStart = timeStart;
       timeEnd = timeStart + secsToNanos(clamp(
@@ -401,8 +519,8 @@ shared ({ caller = creator }) actor class AxonService() = this {
         MINIMUM_DURATION_SEC, MAXIMUM_DURATION_SEC
       ));
       ballots = ballots;
-      totalVotes = Array.foldLeft<T.Ballot, T.Votes>(
-        ballots, {yes = 0; no = 0; notVoted = 0}, func({yes; no; notVoted}, {vote; votingPower}) {
+      totalVotes = Array.foldLeft<CurrentTypes.Ballot, CurrentTypes.Votes>(
+        SB.toArray(ballots), {yes = 0; no = 0; notVoted = 0}, func({yes; no; notVoted}, {vote; votingPower}) {
           {
             yes = if (vote == ?#Yes) { yes + votingPower } else { yes };
             no = no;
@@ -411,24 +529,12 @@ shared ({ caller = creator }) actor class AxonService() = this {
         });
       creator = caller;
       proposal = request.proposal;
-      status = [#Created(now)];
+      status = SB.fromArray<CurrentTypes.Status>([#Created(now)]);
       policy = axon.policy;
     }), request.execute == ?true and timeStart <= now);
 
-    axons[axon.id] := {
-      id = axon.id;
-      proxy = axon.proxy;
-      name = axon.name;
-      visibility = axon.visibility;
-      supply = axon.supply;
-      ledger = axon.ledger;
-      policy = axon.policy;
-      neurons = axon.neurons;
-      totalStake = axon.totalStake;
-      allProposals = axon.allProposals;
-      activeProposals = Array.append(axon.activeProposals, [newProposal]);
-      lastProposalId = axon.lastProposalId + 1;
-    };
+    SB.add<CurrentTypes.AxonProposal>(axon.activeProposals, newProposal);
+    axon.lastProposalId := axon.lastProposalId + 1;
 
     // Start the execution
     switch (A.currentStatus(newProposal.status)) {
@@ -438,22 +544,29 @@ shared ({ caller = creator }) actor class AxonService() = this {
       case _ {}
     };
 
-    #ok(newProposal)
+    #ok({newProposal with
+      ballots = SB.toArray(newProposal.ballots);
+      status = SB.toArray(newProposal.status);
+    });
   };
 
   // Vote on an active proposal
-  public shared({ caller }) func vote(request: T.VoteRequest) : async T.Result<()> {
-    let axon = axons[request.axonId];
+  public shared({ caller }) func vote(request: CurrentTypes.VoteRequest) : async CurrentTypes.Result<()> {
+    let axon = SB.get(state_current.axons, request.axonId);
     if (not isAuthed(caller, axon.ledger)) {
       return #err(#Unauthorized)
     };
 
     let now = Time.now();
-    var result: T.Result<()> = #err(#NotFound);
-    var proposal: ?T.AxonProposal = null;
-    let activeProposals = Array.map<T.AxonProposal, T.AxonProposal>(axon.activeProposals, func(p) {
+    var result: CurrentTypes.Result<()> = #err(#NotFound);
+    var proposal: ?CurrentTypes.AxonProposal = null;
+
+    let activeProposals = Buffer.Buffer<CurrentTypes.AxonProposal>(0);
+
+    label search for(p in SB.vals(axon.activeProposals)){
       if (p.id != request.proposalId) {
-        return p;
+        activeProposals.add(p);
+        continue search;
       };
 
       /* Allow voting under these statuses:
@@ -470,10 +583,11 @@ shared ({ caller = creator }) actor class AxonService() = this {
 
       if (not canVote) {
         result := #err(#CannotVote);
-        return p;
+        activeProposals.add(p);
+        continue search;
       };
 
-      let ballots = Array.map<T.Ballot, T.Ballot>(p.ballots, func(b) {
+      let ballots = Array.map<CurrentTypes.Ballot, CurrentTypes.Ballot>(SB.toArray(p.ballots), func(b) {
         if (b.principal == caller) {
           if (Option.isSome(b.vote)) {
             result := #err(#AlreadyVoted);
@@ -490,9 +604,10 @@ shared ({ caller = creator }) actor class AxonService() = this {
           return b;
         }
       });
+
       proposal := ?A._applyExecutingStatusConditionally(A._applyNewStatus({
         id = p.id;
-        ballots = ballots;
+        ballots = SB.fromArray(ballots);
         totalVotes = A._countVotes(ballots);
         timeStart = p.timeStart;
         timeEnd = p.timeEnd;
@@ -501,37 +616,30 @@ shared ({ caller = creator }) actor class AxonService() = this {
         status = p.status;
         policy = p.policy;
       }), true);
-      Option.unwrap(proposal)
-    });
+
+      activeProposals.add(Option.unwrap(proposal));
+    };
 
     if (Result.isOk(result)) {
       let updatedProposal = Option.unwrap(proposal);
       // Debug.print("updatedProposal " # debug_show(updatedProposal));
 
-      let proposals = switch (A.currentStatus(updatedProposal.status)) {
+      let active_proposals = switch (A.currentStatus(updatedProposal.status)) {
         // Remove from active list if rejected
         case (#Rejected(_)) {
-          (Array.append(axon.allProposals, [updatedProposal]),
-          Array.filter<T.AxonProposal>(activeProposals, func(p) {
+          SB.add<CurrentTypes.AxonProposal>(axon.allProposals, updatedProposal);
+          
+          SB.fromArray<CurrentTypes.AxonProposal>(Array.filter<CurrentTypes.AxonProposal>(activeProposals.toArray(), func(p) {
             p.id != updatedProposal.id
           }))
         };
-        case _ { (axon.allProposals, activeProposals) };
+        case _ { axon.activeProposals };
       };
-      axons[axon.id] := {
-        id = axon.id;
-        proxy = axon.proxy;
-        name = axon.name;
-        visibility = axon.visibility;
-        supply = axon.supply;
-        ledger = axon.ledger;
-        policy = axon.policy;
-        neurons = axon.neurons;
-        totalStake = axon.totalStake;
-        allProposals = proposals.0;
-        activeProposals = proposals.1;
-        lastProposalId = axon.lastProposalId;
-      };
+      SB.put<CurrentTypes.AxonFull>(state_current.axons, axon.id, {
+        axon with
+        activeProposals = active_proposals;
+        var lastProposalId = axon.lastProposalId;
+      });
 
       // Start the execution
       switch (A.currentStatus(updatedProposal.status)) {
@@ -546,61 +654,62 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   // Cancel an active proposal created by caller
-  public shared({ caller }) func cancel(axonId: Nat, proposalId: Nat) : async T.Result<T.AxonProposal> {
-    let axon = axons[axonId];
+  public shared({ caller }) func cancel(axonId: Nat, proposalId: Nat) : async CurrentTypes.Result<CurrentTypes.AxonProposalPublic> {
+    let axon = SB.get(state_current.axons, axonId);
     if (not isAuthed(caller, axon.ledger)) {
       return #err(#Unauthorized)
     };
 
     let now = Time.now();
-    var maybeProposal: ?T.AxonProposal = null;
-    let updatedActiveProposals = Array.map<T.AxonProposal, T.AxonProposal>(axon.activeProposals, func(proposal) {
+    var maybeProposal: ?CurrentTypes.AxonProposal = null;
+
+    let updatedActiveProposals = Buffer.Buffer<CurrentTypes.AxonProposal>(0);
+    
+    label search for(proposal in SB.vals(axon.activeProposals)) {
       if (proposal.id == proposalId) {
         switch (A.isCancellable(A.currentStatus(proposal.status)), proposal.creator) {
           case (true, caller) {
             let newProposal = A.withNewStatus(proposal, #Cancelled(now));
             maybeProposal := ?newProposal;
-            return newProposal;
+            updatedActiveProposals.add(newProposal);
+            continue search;
           };
           // Trap if status is not Active or Created
           case _ { assert(false) };
         };
       };
 
-      proposal
-    });
+      updatedActiveProposals.add(proposal);
+    };
 
     // Update proposals arrays
     let proposal = Option.unwrap(maybeProposal);
-    axons[axon.id] := {
-      id = axon.id;
-      proxy = axon.proxy;
-      name = axon.name;
-      visibility = axon.visibility;
-      supply = axon.supply;
-      ledger = axon.ledger;
-      policy = axon.policy;
-      neurons = axon.neurons;
-      totalStake = axon.totalStake;
-      allProposals = Array.append(axon.allProposals, [proposal]);
-      activeProposals = Array.filter<T.AxonProposal>(updatedActiveProposals, func(p) {
+    SB.add(axon.allProposals, proposal);
+    SB.put<CurrentTypes.AxonFull>(state_current.axons, axon.id,{
+      axon with 
+      activeProposals = SB.fromArray<CurrentTypes.AxonProposal>(Array.filter<CurrentTypes.AxonProposal>(updatedActiveProposals.toArray(), func(p) {
         p.id != proposal.id
-      });
-      lastProposalId = axon.lastProposalId;
-    };
+      }));
+      var lastProposalId = axon.lastProposalId;
+    });
 
-    #ok(proposal);
+    #ok({proposal
+      with
+      ballots = SB.toArray(proposal.ballots);
+      status = SB.toArray(proposal.status);}
+    );
   };
 
   // Queue proposal for execution
-  public shared({ caller }) func execute(axonId: Nat, proposalId: Nat) : async T.Result<T.AxonProposal> {
-    let axon = axons[axonId];
+  public shared({ caller }) func execute(axonId: Nat, proposalId: Nat) : async CurrentTypes.Result<CurrentTypes.AxonProposalPublic> {
+    let axon = SB.get(state_current.axons, axonId);
     if (not isAuthed(caller, axon.ledger)) {
       return #err(#Unauthorized)
     };
 
-    var found: ?T.AxonProposal = null;
-    let activeProposals = Array.map<T.AxonProposal, T.AxonProposal>(axon.activeProposals, func(p) {
+    var found: ?CurrentTypes.AxonProposal = null;
+
+    let activeProposals = Array.map<CurrentTypes.AxonProposal, CurrentTypes.AxonProposal>(SB.toArray(axon.activeProposals), func(p) {
       if (p.id != proposalId) {
         return p;
       };
@@ -611,32 +720,29 @@ shared ({ caller = creator }) actor class AxonService() = this {
         // Trap if status is not ExecutionQueued
         case _ { assert(false) }
       };
-      Option.unwrap(found)
+      found := ?updatedProposal;
+      updatedProposal;
     });
 
-    axons[axon.id] := {
-      id = axon.id;
-      proxy = axon.proxy;
-      name = axon.name;
-      visibility = axon.visibility;
-      supply = axon.supply;
-      ledger = axon.ledger;
-      policy = axon.policy;
-      neurons = axon.neurons;
-      totalStake = axon.totalStake;
-      allProposals = axon.allProposals;
-      activeProposals = activeProposals;
-      lastProposalId = axon.lastProposalId;
-    };
+    SB.put(state_current.axons, axon.id, {
+      axon with
+      activeProposals = SB.fromArray<CurrentTypes.AxonProposal>(activeProposals);
+      var lastProposalId = axon.lastProposalId;
+    });
 
     let proposal = Option.unwrap(found);
 
-    #ok(await _doExecute(axon.id, proposal));
+    let result = await _doExecute(axon.id, proposal);
+
+    #ok({result with
+      ballots = result.ballots;
+      status =  result.status;
+    });
   };
 
   // Call list_neurons() and save the list of neurons that this axon's proxy controls
-  public shared({ caller }) func sync(id: Nat) : async T.NeuronsResult {
-    let axon = axons[id];
+  public shared({ caller }) func sync(id: Nat) : async CurrentTypes.NeuronsResult {
+    let axon = SB.get(state_current.axons, id);
     if (axon.visibility == #Private and not isAuthed(caller, axon.ledger)) {
       return #err(#Unauthorized)
     };
@@ -646,7 +752,8 @@ shared ({ caller = creator }) actor class AxonService() = this {
       response = response;
       timestamp = Time.now();
     };
-    axons[id] := {
+
+    SB.put(state_current.axons, id, {
       id = axon.id;
       proxy = axon.proxy;
       name = axon.name;
@@ -660,8 +767,8 @@ shared ({ caller = creator }) actor class AxonService() = this {
       });
       allProposals = axon.allProposals;
       activeProposals = axon.activeProposals;
-      lastProposalId = axon.lastProposalId;
-    };
+      var lastProposalId = axon.lastProposalId;
+    });
 
     // Since this will be called from the client periodically, call cleanup
     ignore cleanup(axon.id);
@@ -670,24 +777,24 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   // Update proposal statuses and move from active to all if needed. Called by sync
-  public shared({ caller }) func cleanup(axonId: Nat) : async T.Result<()> {
-    let axon = axons[axonId];
+  public shared({ caller }) func cleanup(axonId: Nat) : async CurrentTypes.Result<()> {
+    let axon = SB.get(state_current.axons, axonId);
     if (not isAuthed(caller, axon.ledger)) {
       return #err(#Unauthorized)
     };
 
-    let finished = Buffer.Buffer<T.AxonProposal>(0);
-    let toExecute = Buffer.Buffer<T.AxonProposal>(0);
+    let finished = Buffer.Buffer<CurrentTypes.AxonProposal>(0);
+    let toExecute = Buffer.Buffer<CurrentTypes.AxonProposal>(0);
     let now = Time.now();
     var hasChanges = false;
-    let updatedActiveProposals = Array.map<T.AxonProposal, T.AxonProposal>(axon.activeProposals, func(proposal) {
+    let updatedActiveProposals = Array.map<CurrentTypes.AxonProposal, CurrentTypes.AxonProposal>(SB.toArray(axon.activeProposals), func(proposal) {
       let after = A._applyExecutingStatusConditionally(A._applyNewStatus(proposal), true);
-      if (after.status != proposal.status) {
+      if (SB.size(after.status) != SB.size(proposal.status)) {
         hasChanges := true
       };
       after
     });
-    let filteredActiveProposals = Array.filter<T.AxonProposal>(updatedActiveProposals, func(proposal) {
+    let filteredActiveProposals = Array.filter<CurrentTypes.AxonProposal>(updatedActiveProposals, func(proposal) {
       let shouldKeep = switch (A.currentStatus(proposal.status)) {
         case (#Expired(_)) { false };
         case (#ExecutionQueued(_)) {
@@ -705,20 +812,13 @@ shared ({ caller = creator }) actor class AxonService() = this {
     // Move finished proposals from active to all
     if (hasChanges or finished.size() > 0) {
       let finishedArr = finished.toArray();
-      axons[axon.id] := {
-        id = axon.id;
-        proxy = axon.proxy;
-        name = axon.name;
-        visibility = axon.visibility;
-        supply = axon.supply;
-        ledger = axon.ledger;
-        policy = axon.policy;
-        neurons = axon.neurons;
-        totalStake = axon.totalStake;
-        allProposals = Array.append(axon.allProposals, finishedArr);
-        activeProposals = filteredActiveProposals;
-        lastProposalId = axon.lastProposalId;
-      };
+      SB.append(axon.allProposals, SB.fromArray<CurrentTypes.AxonProposal>(finishedArr));
+
+      SB.put(state_current.axons, axon.id, {
+        axon with 
+        activeProposals = SB.fromArray<CurrentTypes.AxonProposal>(filteredActiveProposals);
+        var lastProposalId = axon.lastProposalId;
+      });
     };
 
     // Start execution
@@ -732,44 +832,35 @@ shared ({ caller = creator }) actor class AxonService() = this {
   // ---- Internal functions
 
   // Execute accepted proposal
-  func _doExecute(axonId: Nat, proposal: T.AxonProposal) : async T.AxonProposal {
+  func _doExecute(axonId: Nat, proposal: CurrentTypes.AxonProposal) : async CurrentTypes.AxonProposalPublic {
     switch (A.currentStatus(proposal.status)) {
       case (#ExecutionQueued(_)) {};
       // Trap if status is not ExecutionQueued
       case _ { assert(false) }
     };
 
-    let axon = axons[axonId];
+    let axon = SB.get(state_current.axons, axonId);
 
     // Set proposal status to ExecutionStarted. Proposal state is cached during execution
     let startedProposal = A.withNewStatus(proposal, #ExecutionStarted(Time.now()));
-    axons[axon.id] := {
-      id = axon.id;
-      proxy = axon.proxy;
-      name = axon.name;
-      visibility = axon.visibility;
-      supply = axon.supply;
-      ledger = axon.ledger;
-      policy = axon.policy;
-      neurons = axon.neurons;
-      totalStake = axon.totalStake;
-      allProposals = axon.allProposals;
-      activeProposals = Array.map<T.AxonProposal, T.AxonProposal>(axon.activeProposals, func(p) {
+    SB.put(state_current.axons, axon.id, {
+      axon with 
+      activeProposals = SB.fromArray<CurrentTypes.AxonProposal>(Array.map<CurrentTypes.AxonProposal, CurrentTypes.AxonProposal>(SB.toArray(axon.activeProposals), func(p) {
         if (p.id == proposal.id ) { startedProposal }
         else p
-      });
-      lastProposalId = axon.lastProposalId;
-    };
+      }));
+      var lastProposalId = axon.lastProposalId;
+    });
 
-    var maybeNewAxon: ?T.AxonFull = null;
+    var maybeNewAxon: ?CurrentTypes.AxonFull = null;
     let proposalType = switch (startedProposal.proposal) {
       case (#NeuronCommand((command,_))) {
         // Forward command to specified neurons, or all
         let neuronIds = neuronIdsFromInfos(axon.id);
-        let proposalResponses = Buffer.Buffer<T.NeuronCommandResponse>(neuronIds.size());
+        let proposalResponses = Buffer.Buffer<CurrentTypes.NeuronCommandResponse>(neuronIds.size());
         let specifiedNeuronIds = Option.get(command.neuronIds, neuronIds);
         for (id in specifiedNeuronIds.vals()) {
-          let neuronResponses = Buffer.Buffer<T.ManageNeuronResponseOrProposal>(1);
+          let neuronResponses = Buffer.Buffer<CurrentTypes.ManageNeuronResponseOrProposal>(1);
           try {
             let response = await axon.proxy.manage_neuron({id = ?{id = id}; command = ?command.command});
             neuronResponses.add(#ManageNeuronResponse(#ok(response)));
@@ -795,11 +886,11 @@ shared ({ caller = creator }) actor class AxonService() = this {
         switch (response) {
           case (#ok((newAxon,_))) {
             maybeNewAxon := ?newAxon;
-            axons[newAxon.id] := newAxon;
+            SB.put(state_current.axons, newAxon.id, newAxon);
           };
           case _ {}
         };
-        #AxonCommand((command, ?Result.mapOk<(T.AxonFull, T.AxonCommandExecution), T.AxonCommandExecution, T.Error>(response, func(t) { t.1 })))
+        #AxonCommand((command, ?Result.mapOk<(CurrentTypes.AxonFull, CurrentTypes.AxonCommandExecution), CurrentTypes.AxonCommandExecution, CurrentTypes.Error>(response, func(t) { t.1 })))
       };
       case (#CanisterCommand((command,_))) {
         let response = switch(await axon.proxy.call_raw(command.canister, command.functionName, command.argumentBinary)){
@@ -809,41 +900,26 @@ shared ({ caller = creator }) actor class AxonService() = this {
       }
     };
     // Re-select axon
-    let newAxon = Option.get(maybeNewAxon, axons[axonId]);
+    let newAxon = Option.get(maybeNewAxon, SB.get(state_current.axons, axonId));
 
     // Save responses and set status to ExecutionFinished
-    let finishedProposal: T.AxonProposal = {
-      id = startedProposal.id;
-      totalVotes = startedProposal.totalVotes;
-      ballots = startedProposal.ballots;
-      timeStart = startedProposal.timeStart;
-      timeEnd = startedProposal.timeEnd;
-      creator = startedProposal.creator;
-      proposal = proposalType;
-      status = Array.append(startedProposal.status, [#ExecutionFinished(Time.now())]);
-      policy = startedProposal.policy;
-    };
-
+    SB.add(startedProposal.status, #ExecutionFinished(Time.now()));
+    
+    SB.add(newAxon.allProposals, startedProposal);
     // Move executed proposal from active to all
-    axons[newAxon.id] := {
-      id = newAxon.id;
-      proxy = newAxon.proxy;
-      name = newAxon.name;
-      visibility = newAxon.visibility;
-      supply = newAxon.supply;
-      ledger = newAxon.ledger;
-      policy = newAxon.policy;
-      neurons = newAxon.neurons;
-      totalStake = newAxon.totalStake;
-      allProposals = Array.append(newAxon.allProposals, [finishedProposal]);
-      activeProposals = Array.filter<T.AxonProposal>(newAxon.activeProposals, func(p) { p.id != finishedProposal.id });
-      lastProposalId = newAxon.lastProposalId;
-    };
+    SB.put(state_current.axons, newAxon.id, {
+      newAxon with 
+      activeProposals = SB.fromArray<CurrentTypes.AxonProposal>(Array.filter<CurrentTypes.AxonProposal>(SB.toArray(newAxon.activeProposals), func(p) { p.id != startedProposal.id }));
+      var lastProposalId = newAxon.lastProposalId;
+    });
 
-    finishedProposal
+    {startedProposal with 
+      ballots = SB.toArray(startedProposal.ballots);
+      status =  SB.toArray(startedProposal.status);
+    }
   };
 
-  func _applyAxonCommand(axon: T.AxonFull, request: T.AxonCommandRequest) : T.Result<(T.AxonFull, T.AxonCommandExecution)> {
+  func _applyAxonCommand(axon: CurrentTypes.AxonFull, request: CurrentTypes.AxonCommandRequest) : CurrentTypes.Result<(CurrentTypes.AxonFull, CurrentTypes.AxonCommandExecution)> {
     switch(request) {
       case (#SetPolicy(policy)) {
         switch (policy.proposers) {
@@ -866,7 +942,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
           totalStake = axon.totalStake;
           allProposals = axon.allProposals;
           activeProposals = axon.activeProposals;
-          lastProposalId = axon.lastProposalId;
+          var lastProposalId = axon.lastProposalId;
         }, #Ok)
       };
       case (#SetVisibility(visibility)) {
@@ -882,23 +958,13 @@ shared ({ caller = creator }) actor class AxonService() = this {
           totalStake = axon.totalStake;
           allProposals = axon.allProposals;
           activeProposals = axon.activeProposals;
-          lastProposalId = axon.lastProposalId;
+          var lastProposalId = axon.lastProposalId;
         }, #Ok)
       };
       case (#Motion(motion)) {
         #ok({
-          id = axon.id;
-          proxy = axon.proxy;
-          name = axon.name;
-          visibility = axon.visibility;
-          supply = axon.supply;
-          ledger = axon.ledger;
-          policy = axon.policy;
-          neurons = axon.neurons;
-          totalStake = axon.totalStake;
-          allProposals = axon.allProposals;
-          activeProposals = axon.activeProposals;
-          lastProposalId = axon.lastProposalId;
+          axon with 
+          var lastProposalId = axon.lastProposalId;
         }, #Ok)
       };
       case (#AddMembers(principals)) {
@@ -909,25 +975,14 @@ shared ({ caller = creator }) actor class AxonService() = this {
             });
             Debug.print(" diff " # debug_show(diff));
             #ok({
-              id = axon.id;
-              proxy = axon.proxy;
-              name = axon.name;
-              visibility = axon.visibility;
-              supply = axon.supply;
-              ledger = axon.ledger;
+              axon with 
               policy = {
                 // set to current + diff
+                axon.policy with 
                 proposers = #Closed(Array.append(current, diff));
-                proposeThreshold = axon.policy.proposeThreshold;
-                acceptanceThreshold = axon.policy.acceptanceThreshold;
-                allowTokenBurn = axon.policy.allowTokenBurn;
-                restrictTokenTransfer = axon.policy.restrictTokenTransfer;
+                
               };
-              neurons = axon.neurons;
-              totalStake = axon.totalStake;
-              allProposals = axon.allProposals;
-              activeProposals = axon.activeProposals;
-              lastProposalId = axon.lastProposalId;
+              var lastProposalId = axon.lastProposalId;
             }, #Ok)
 
           };
@@ -947,24 +1002,57 @@ shared ({ caller = creator }) actor class AxonService() = this {
             };
 
             #ok({
-              id = axon.id;
-              proxy = axon.proxy;
-              name = axon.name;
-              visibility = axon.visibility;
-              supply = axon.supply;
-              ledger = axon.ledger;
+              axon with
               policy = {
+                axon.policy with 
                 proposers = #Closed(diff);
-                proposeThreshold = axon.policy.proposeThreshold;
-                acceptanceThreshold = axon.policy.acceptanceThreshold;
-                allowTokenBurn = axon.policy.allowTokenBurn;
-                restrictTokenTransfer = axon.policy.restrictTokenTransfer;
               };
-              neurons = axon.neurons;
-              totalStake = axon.totalStake;
-              allProposals = axon.allProposals;
-              activeProposals = axon.activeProposals;
-              lastProposalId = axon.lastProposalId;
+              var lastProposalId = axon.lastProposalId;
+            }, #Ok)
+
+          };
+          case _ {
+            #err(#InvalidProposal);
+          }
+        }
+      };
+      case (#AddMinters(principals)) {
+        let current =  switch (axon.policy.minters) {
+          case (#Minters(current)) current;
+          case(#None) [];
+        };
+        
+        let diff = Array.filter<Principal>(principals, func(p) {
+          not Arr.contains<Principal>(current, p, Principal.equal)
+        });
+        Debug.print(" diff " # debug_show(diff));
+        #ok({
+          axon with 
+          policy = {
+            // set to current + diff
+            axon.policy with
+            minters = #Minters(Array.append(current, diff));
+          };
+          var lastProposalId = axon.lastProposalId;
+        }, #Ok)
+      };
+      case (#RemoveMinters(principals)) {
+        switch (axon.policy.minters) {
+          case (#Minters(current)) {
+            let diff = Array.filter<Principal>(current, func(c) {
+              not Arr.contains<Principal>(principals, c, Principal.equal)
+            });
+            if (diff.size() == 0) {
+              return #err(#CannotExecute)
+            };
+
+            #ok({
+              axon with
+              policy = {
+                axon.policy with 
+                minters = #Minters(diff);
+              };
+              var lastProposalId = axon.lastProposalId;
             }, #Ok)
 
           };
@@ -974,38 +1062,29 @@ shared ({ caller = creator }) actor class AxonService() = this {
         }
       };
       case (#Redenominate({from; to})) {
-        let newLedgerEntries = Array.map<T.LedgerEntry, T.LedgerEntry>(Iter.toArray(axon.ledger.entries()), func (a) {
+        let newLedgerEntries = Array.map<CurrentTypes.LedgerEntry, CurrentTypes.LedgerEntry>(Iter.toArray(Map.entries(axon.ledger)), func (a) {
           (a.0, A.scaleByFraction(a.1, to, from))
         });
         let newSupply = Array.foldLeft<(Principal,Nat), Nat>(newLedgerEntries, 0, func(sum, c) { sum + c.1 });
-        let newLedger = HashMap.fromIter<Principal, Nat>(newLedgerEntries.vals(), newLedgerEntries.size(), Principal.equal, Principal.hash);
+        let newLedger = Map.fromIter<Principal, Nat>(newLedgerEntries.vals(), phash);
         #ok({
-          id = axon.id;
-          proxy = axon.proxy;
-          name = axon.name;
-          visibility = axon.visibility;
+          axon with 
           supply = newSupply;
           ledger = newLedger;
           policy = {
-            proposers = axon.policy.proposers;
+            axon.policy with
             proposeThreshold = A.scaleByFraction(axon.policy.proposeThreshold, to, from);
             acceptanceThreshold = switch (axon.policy.acceptanceThreshold) {
               case (#Absolute(n)) { #Absolute(A.scaleByFraction(n, to, from)) };
               case (p) { p };
             };
-            allowTokenBurn = axon.policy.allowTokenBurn;
-            restrictTokenTransfer = axon.policy.restrictTokenTransfer;
           };
-          neurons = axon.neurons;
-          totalStake = axon.totalStake;
-          allProposals = axon.allProposals;
-          activeProposals = axon.activeProposals;
-          lastProposalId = axon.lastProposalId;
+          var lastProposalId = axon.lastProposalId;
         }, #SupplyChanged({ from = axon.supply; to = newSupply }))
       };
       case (#Mint({amount; recipient})) {
         let dest = Option.get(recipient, Principal.fromActor(this));
-        axon.ledger.put(dest, Option.get(axon.ledger.get(dest), 0) + amount);
+        Map.set<Principal, Nat>(axon.ledger, phash, dest, Option.get(Map.get<Principal,Nat>(axon.ledger, phash, dest), 0) + amount);
         let newSupply = axon.supply + amount;
         #ok({
           id = axon.id;
@@ -1019,18 +1098,18 @@ shared ({ caller = creator }) actor class AxonService() = this {
           totalStake = axon.totalStake;
           allProposals = axon.allProposals;
           activeProposals = axon.activeProposals;
-          lastProposalId = axon.lastProposalId;
+          var lastProposalId = axon.lastProposalId;
         }, #SupplyChanged({ from = axon.supply; to = newSupply }))
       };
       case (#Burn({amount; owner})) {
-        let current_balance = Option.get(axon.ledger.get(owner), 0);
+        let current_balance = Option.get(Map.get(axon.ledger, phash, owner), 0);
         var tokens_removed : Nat = 0;
         if (Bool.logor(amount == 0, amount > current_balance)) {
-          tokens_removed := Option.get(axon.ledger.get(owner), 0);
-          axon.ledger.put(owner, 0);
+          tokens_removed := Option.get(Map.get(axon.ledger, phash, owner), 0);
+          Map.set(axon.ledger, phash, owner, 0);
         } else {
           tokens_removed := amount;
-          axon.ledger.put(owner, Option.get(axon.ledger.get(owner), 0) - amount);
+          Map.set(axon.ledger, phash, owner, Option.get(Map.get(axon.ledger, phash, owner), 0) - amount);
         };
         let newSupply : Nat = axon.supply - tokens_removed;
         #ok({
@@ -1045,17 +1124,17 @@ shared ({ caller = creator }) actor class AxonService() = this {
           totalStake = axon.totalStake;
           allProposals = axon.allProposals;
           activeProposals = axon.activeProposals;
-          lastProposalId = axon.lastProposalId;
+          var lastProposalId = axon.lastProposalId;
         }, #SupplyChanged({ from = axon.supply; to = newSupply }))
       };
       case (#Transfer({amount; recipient})) {
-        let senderBalance = Option.get(axon.ledger.get(Principal.fromActor(this)), 0);
+        let senderBalance = Option.get(Map.get(axon.ledger, phash, Principal.fromActor(this)), 0);
         if (senderBalance < amount) {
           return #err(#CannotExecute);
         };
 
-        axon.ledger.put(Principal.fromActor(this), senderBalance - amount);
-        axon.ledger.put(recipient, Option.get(axon.ledger.get(recipient), 0) + amount);
+        Map.set(axon.ledger, phash, Principal.fromActor(this), senderBalance - amount);
+        Map.set(axon.ledger, phash, recipient, Option.get(Map.get(axon.ledger, phash, recipient), 0) + amount);
         #ok(axon, #Transfer({
           senderBalanceAfter = senderBalance - amount;
           amount = amount;
@@ -1066,7 +1145,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   // Attempt to retrieve NNS proposal, tries up to 10 times
-  func _tryGetProposal(id: Nat64, tries: Nat): async (T.Result<?GT.ProposalInfo>, Nat) {
+  func _tryGetProposal(id: Nat64, tries: Nat): async (CurrentTypes.Result<?GT.ProposalInfo>, Nat) {
     try {
       let proposalInfo = await Governance.get_proposal_info(id);
       (#ok(proposalInfo), tries);
@@ -1083,7 +1162,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
 
   // Returns true if the policy of an axon allows token transfers by members
   func tokenTransfersAllowed(id : Nat) : Bool {
-    let axon = axons[id];
+    let axon = SB.get(state_current.axons, id);
 
     if (axon.policy.restrictTokenTransfer) {
       return false;
@@ -1093,9 +1172,9 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   // Returns true if the principal holds a balance in ledger, OR if it's this canister
-  func isAuthed(principal: Principal, ledger: T.Ledger) : Bool {
+  func isAuthed(principal: Principal, ledger: CurrentTypes.Ledger) : Bool {
     principal == Principal.fromActor(this) or
-    (switch (ledger.get(principal)) {
+    (switch (Map.get(ledger,phash, principal)) {
       case (?balance) { balance > 0 };
       case _ { false };
     })
@@ -1103,7 +1182,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
 
   // Return neuron IDs from stored neuron_infos
   func neuronIdsFromInfos(id: Nat) : [Nat64] {
-    switch (axons[id].neurons) {
+    switch (SB.get(state_current.axons, id).neurons) {
       case (?{response={neuron_infos}}) {
         Array.map<(Nat64, GT.NeuronInfo), Nat64>(neuron_infos, func(i) { i.0 })
       };
@@ -1112,7 +1191,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   // Return Axon with own balance
-  func getAxonPublic(axon: T.AxonFull): T.AxonPublic {
+  func getAxonPublic(axon: CurrentTypes.AxonFull): CurrentTypes.AxonPublic {
     {
       id = axon.id;
       proxy = axon.proxy;
@@ -1120,9 +1199,9 @@ shared ({ caller = creator }) actor class AxonService() = this {
       visibility = axon.visibility;
       supply = axon.supply;
       policy = axon.policy;
-      balance = Option.get(axon.ledger.get(Principal.fromActor(this)), 0);
+      balance = Option.get(Map.get(axon.ledger, phash, Principal.fromActor(this)), 0);
       totalStake = axon.totalStake;
-      tokenHolders = axon.ledger.size();
+      tokenHolders = Map.size(axon.ledger);
     }
   };
 
@@ -1130,7 +1209,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
 
   func clamp(n: Int, lower: Int, upper: Int): Int { Int.min(Int.max(n, lower), upper) };
 
-  func makeError(e: Error): T.Error {
+  func makeError(e: Error): CurrentTypes.Error {
     #Error({
       error_message = Error.message(e);
       error_type = Error.code(e);
@@ -1140,46 +1219,12 @@ shared ({ caller = creator }) actor class AxonService() = this {
   // ---- System functions
 
   system func preupgrade() {
-    // Persist ledger hashmap entries
-    axonEntries_post := Array.map<T.AxonFull, T.AxonEntries>(Array.freeze(axons), func(axon) {
-      {
-        id = axon.id;
-        proxy = axon.proxy;
-        name = axon.name;
-        visibility = axon.visibility;
-        supply = axon.supply;
-        ledgerEntries = Iter.toArray(axon.ledger.entries());
-        policy = axon.policy;
-        neurons = axon.neurons;
-        totalStake = axon.totalStake;
-        allProposals = axon.allProposals;
-        activeProposals = axon.activeProposals;
-        lastProposalId = axon.lastProposalId;
-      }
-    });
-    _AdminsUD := ?_Admins.preupgrade();
+    
   };
 
   system func postupgrade() {
     // Restore ledger hashmap from entries
-    axons := Array.thaw(Array.map<T.AxonEntries, T.AxonFull>(axonEntries_post, func(axon) {
-      // Remove 0-balance entries
-      let filteredEntries = Array.filter<T.LedgerEntry>(axon.ledgerEntries, func((_, balance)) { balance > 0 });
-      {
-        id = axon.id;
-        proxy = axon.proxy;
-        name = axon.name;
-        visibility = axon.visibility;
-        supply = axon.supply;
-        ledger = HashMap.fromIter<Principal, Nat>(filteredEntries.vals(), filteredEntries.size(), Principal.equal, Principal.hash);
-        policy = axon.policy;
-        neurons = axon.neurons;
-        totalStake = axon.totalStake;
-        allProposals = axon.allProposals;
-        activeProposals = axon.activeProposals;
-        lastProposalId = axon.lastProposalId;
-      }
-    }));
+
     _Admins.postupgrade(_AdminsUD);
     _AdminsUD := null;
   };

@@ -5,10 +5,12 @@ import Error "mo:base/Error";
 import Principal "mo:base/Principal";
 import Result "mo:base/Result";
 
-import IC "./IcManagementTypes";
-import GT "./GovernanceTypes";
+import IC "../../IcManagementTypes";
+import GT "../../GovernanceTypes";
 
 module {
+
+  
   public type Proxy = actor {
     list_neurons : shared () -> async GT.ListNeuronsResponse;
     manage_neuron : shared GT.ManageNeuron -> async GT.ManageNeuronResponse;
@@ -103,6 +105,7 @@ module {
     acceptanceThreshold: Threshold;
     allowTokenBurn: Bool;
     restrictTokenTransfer: Bool;
+    minters: {#None; #Minters:[Principal]};
   };
 
   public type Motion = {
@@ -115,6 +118,8 @@ module {
     #SetPolicy: Policy;
     #AddMembers: [Principal];
     #RemoveMembers: [Principal];
+    #AddMinters: [Principal];
+    #RemoveMinters: [Principal];
     #SetVisibility: Visibility;
     #Motion: Motion;
 

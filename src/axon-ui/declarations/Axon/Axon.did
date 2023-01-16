@@ -167,6 +167,10 @@ type Policy =
                 Closed: vec principal;
                 Open;
               };
+   minters: variant {
+                Minters: vec principal;
+                None;
+              };
    restrictTokenTransfer: bool;
  };
 type Operation = 
@@ -508,6 +512,7 @@ type AxonCommandResponse =
 type AxonCommandRequest = 
  variant {
    AddMembers: vec principal;
+   AddMinters: vec principal;
    Burn: record {
            amount: nat;
            owner: principal;
@@ -522,6 +527,7 @@ type AxonCommandRequest =
                    to: nat;
                  };
    RemoveMembers: vec principal;
+   RemoveMinters: vec principal;
    SetPolicy: Policy;
    SetVisibility: Visibility;
    Transfer: record {
