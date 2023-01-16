@@ -37,7 +37,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
   let { ihash; nhash; thash; phash; calcHash } = Map;
   // ---- State
 
-  stable var axonEntries_pre: [T.AxonEntries] = [];
+  stable var axonEntries_pre: [T.AxonEntries_pre] = [];
   stable var axonEntries_post: [T.AxonEntries] = [];
 
 
