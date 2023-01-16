@@ -28,7 +28,7 @@ import IC "./IcManagementTypes";
 
 import Proxy "./Proxy";
 import A "./AxonHelpers";
-import T "migrations/v002_000_000/axon_types";
+import T "./migrations/v002_000_000/axon_types";
 
 import MigrationTypes "./migrations/types";
 import Migrations "./migrations";
@@ -48,7 +48,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
 
   // Do not forget to change #v0_1_0 when you are adding a new migration
   // If you use one previous state in place of #v0_1_0 it will run downgrade methods instead
-  migration_state := Migrations.migrate(migration_state, #v2_0_1(#id), {creator = creator; init_axons = axonEntries_pre; init_admins= _AdminsUD});
+  migration_state := Migrations.migrate(migration_state, #v2_0_1(#id), {creator = creator; init_axons = axonEntries_post; init_admins= _AdminsUD});
 
   let #v2_0_1(#data(state_current)) = migration_state;
 
@@ -430,6 +430,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
 
     let supply = Array.foldLeft<(Principal,Nat), Nat>(init.ledgerEntries, 0, func(sum, c) { sum + c.1 });
     Cycles.add(1_000_000_000_000);
+    
     let axon: CurrentTypes.AxonFull = {
       id = SB.size(state_current.axons);
       proxy = await Proxy.Proxy(Principal.fromActor(this));

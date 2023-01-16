@@ -26,9 +26,34 @@ module {
       let activeProposals = SB_lib.init<v2_0_1_types.AxonProposal>();
 
       for(thisProposal in thisItem.activeProposals.vals()){
-        SB_lib.add<v2_0_1_types.AxonProposal>(activeProposals, {thisProposal with 
+        SB_lib.add<v2_0_1_types.AxonProposal>(activeProposals, {
+          thisProposal with
+          proposal = switch(thisProposal.proposal){
+            case(#AxonCommand(cmd)){
+              #AxonCommand((switch(cmd.0){
+                case(#SetPolicy(cmd)) #SetPolicy({
+                  cmd with 
+                  minters = #None});
+                case(#AddMembers(cmd)) #AddMembers(cmd);
+                case(#RemoveMembers(cmd)) #RemoveMembers(cmd);
+                case(#SetVisibility(cmd)) #SetVisibility(cmd);
+                case(#Motion(cmd)) #Motion(cmd);
+                case(#Mint(cmd)) #Mint(cmd);
+                case(#Burn(cmd)) #Burn(cmd);
+                case(#Transfer(cmd)) #Transfer(cmd);
+                case(#Redenominate(cmd)) #Redenominate(cmd);
+              },cmd.1));
+            };
+            case(#CanisterCommand(cmd)) #CanisterCommand(cmd);
+            case(#NeuronCommand(cmd)) #NeuronCommand(cmd);
+            
+          };
           ballots = SB_lib.fromArray<v2_0_1_types.Ballot>(thisProposal.ballots);
           status = SB_lib.fromArray<v2_0_1_types.Status>(thisProposal.status);
+          policy = {
+            thisProposal.policy with
+            minters = #None
+          };
           
         });
       };
@@ -36,15 +61,45 @@ module {
       let allProposals = SB_lib.init<v2_0_1_types.AxonProposal>();
 
       for(thisProposal in thisItem.allProposals.vals()){
-        SB_lib.add<v2_0_1_types.AxonProposal>(allProposals,{thisProposal with 
+        SB_lib.add<v2_0_1_types.AxonProposal>(allProposals,{
+          thisProposal with
+          proposal = switch(thisProposal.proposal){
+            case(#AxonCommand(cmd)){
+              #AxonCommand((switch(cmd.0){
+                case(#SetPolicy(cmd)) #SetPolicy({
+                  cmd with 
+                  minters = #None});
+                case(#AddMembers(cmd)) #AddMembers(cmd);
+                case(#RemoveMembers(cmd)) #RemoveMembers(cmd);
+                case(#SetVisibility(cmd)) #SetVisibility(cmd);
+                case(#Motion(cmd)) #Motion(cmd);
+                case(#Mint(cmd)) #Mint(cmd);
+                case(#Burn(cmd)) #Burn(cmd);
+                case(#Transfer(cmd)) #Transfer(cmd);
+                case(#Redenominate(cmd)) #Redenominate(cmd);
+              },cmd.1));
+            };
+            case(#CanisterCommand(cmd)) #CanisterCommand(cmd);
+            case(#NeuronCommand(cmd)) #NeuronCommand(cmd);
+            
+          };
           ballots = SB_lib.fromArray<v2_0_1_types.Ballot>(thisProposal.ballots);
           status = SB_lib.fromArray<v2_0_1_types.Status>(thisProposal.status);
+          policy = {
+            thisProposal.policy with
+            minters = #None
+          };
         });
       };
 
-
       SB_lib.add<v2_0_1_types.AxonFull>(axons, {
-        thisItem with
+        visibility = thisItem.visibility;
+        totalStake = thisItem.totalStake;
+        supply = thisItem.supply;
+        proxy = thisItem.proxy;
+        id = thisItem.id;
+        neurons = thisItem.neurons;
+        name = thisItem.name;
         ledger = aLedger;
         activeProposals = activeProposals;
         allProposals = allProposals;

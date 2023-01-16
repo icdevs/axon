@@ -105,7 +105,6 @@ module {
     acceptanceThreshold: Threshold;
     allowTokenBurn: Bool;
     restrictTokenTransfer: Bool;
-    minters: {#None; #Minters:[Principal]};
   };
 
   public type Motion = {
@@ -118,8 +117,6 @@ module {
     #SetPolicy: Policy;
     #AddMembers: [Principal];
     #RemoveMembers: [Principal];
-    #AddMinters: [Principal];
-    #RemoveMinters: [Principal];
     #SetVisibility: Visibility;
     #Motion: Motion;
 

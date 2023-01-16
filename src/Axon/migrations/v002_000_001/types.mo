@@ -37,7 +37,12 @@ module {
 
   public type ProposalResult = Result<[AxonProposalPublic]>;
 
-  public type Initialization = v2_0_0.Initialization;
+  public type Initialization = {
+    name: Text;
+    ledgerEntries: [LedgerEntry];
+    visibility: Visibility;
+    policy: Policy;
+  };
 
   public type VoteRequest = v2_0_0.VoteRequest;
 
@@ -80,11 +85,6 @@ module {
   public type Threshold = {
     #Percent: { percent: Nat; quorum: ?Nat }; // proportion times 1e8, ie. 100% = 1e8
     #Absolute: Nat;
-  };
-
-  public type Neurons = {
-    response: GT.ListNeuronsResponse;
-    timestamp: Int;
   };
 
   public type Vote = {
@@ -220,6 +220,11 @@ module {
     proposal: ProposalType;
     status: [Status];
     policy: Policy;
+  };
+
+  public type Neurons = {
+    response: GT.ListNeuronsResponse;
+    timestamp: Int;
   };
 
   public type AxonFull = {
