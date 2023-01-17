@@ -218,9 +218,10 @@ export const axonCommandToString = (command: AxonCommandRequest) => {
     }
     case "SetPolicy": {
       assert("SetPolicy" in command);
-      const { proposeThreshold, proposers, acceptanceThreshold } =
+      const { proposeThreshold, proposers, acceptanceThreshold, minters } =
         command.SetPolicy;
       const membership = "Closed" in proposers ? "Restricted" : "Any";
+      const minter_list = "None" in minters ? "None" : "Any";
       let threshold: string;
       if ("Percent" in acceptanceThreshold) {
         const percent = formatPercent(
@@ -237,7 +238,7 @@ export const axonCommandToString = (command: AxonCommandRequest) => {
       } else {
         threshold = `${formatNumber(acceptanceThreshold.Absolute)} to accept`;
       }
-      return `Set Policy: ${membership} proposer, ${formatNumber(
+      return `Set Policy: ${membership} proposer, ${minter_list} minters, ${formatNumber(
         proposeThreshold
       )} to propose, ${threshold}`;
     }

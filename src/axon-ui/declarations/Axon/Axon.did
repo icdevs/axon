@@ -115,7 +115,7 @@ type RegisterVote =
  };
 type Proxy = 
  service {
-   call_raw: (principal, text, blob) -> (Result__1);
+   call_raw: (principal, text, blob, nat) -> (Result__1);
    list_neurons: () -> (ListNeuronsResponse);
    manage_neuron: (ManageNeuron) -> (ManageNeuronResponse);
    recycle_cycles: (principal, nat) -> (nat);
@@ -425,6 +425,8 @@ type CanisterCommandRequest =
    argumentBinary: blob;
    canister: principal;
    functionName: text;
+   note: text;
+   cycles: Nat;
  };
 type CanisterCommand = 
  record {

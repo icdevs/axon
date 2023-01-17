@@ -155,6 +155,15 @@ shared ({ caller = creator }) actor class AxonService() = this {
     let command : CurrentTypes.AxonCommandRequest =  #Mint({amount = a; recipient = ?p});
     let response = _applyAxonCommand(axon, command);
 
+    var maybeNewAxon: ?CurrentTypes.AxonFull = null;
+    switch (response) {
+      case (#ok((newAxon,_))) {
+        maybeNewAxon := ?newAxon;
+        SB.put(state_current.axons, newAxon.id, newAxon);
+      };
+      case _ {}
+    };
+
     switch(response){
       case(#ok(val)){
         #ok(val.1);
@@ -165,7 +174,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
     }
   };
 
-  //let a minter mint
+  //let a minter burn
   public shared ({ caller }) func burn(axonId: Nat, p : Principal, a: Nat) : async CurrentTypes.Result<CurrentTypes.AxonCommandExecution> {
     
     let axon = SB.get(state_current.axons, axonId);
@@ -184,7 +193,15 @@ shared ({ caller = creator }) actor class AxonService() = this {
     };
 
     let command : CurrentTypes.AxonCommandRequest =  #Burn({amount = a; owner = p});
+    var maybeNewAxon: ?CurrentTypes.AxonFull = null;
     let response = _applyAxonCommand(axon, command);
+    switch (response) {
+      case (#ok((newAxon,_))) {
+        maybeNewAxon := ?newAxon;
+        SB.put(state_current.axons, newAxon.id, newAxon);
+      };
+      case _ {}
+    };
 
     switch(response){
       case(#ok(val)){
@@ -194,6 +211,17 @@ shared ({ caller = creator }) actor class AxonService() = this {
         #err(err);
       };
     }
+  };
+
+  //let a minter burn
+  public shared ({ caller }) func upgradeProxy() : async Bool {
+    assert (caller == master);
+    for(thisAxon in SB.vals(state_current.axons)){
+      let proxy  = thisAxon.proxy;
+      let test = await (system Proxy.Proxy)(#upgrade proxy)(Principal.fromActor(proxy)); // upgrade!
+    };
+
+    return true;
   };
 
   
@@ -493,6 +521,9 @@ shared ({ caller = creator }) actor class AxonService() = this {
       };
       case (#CanisterCommand((command,_))) {
         // could place any checks here if needed.
+        if(command.note.size() > 30000){
+          return #err(#Error({error_message="note too long"; error_type = #canister_error}));
+        };
       };
     };
 
@@ -894,7 +925,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
         #AxonCommand((command, ?Result.mapOk<(CurrentTypes.AxonFull, CurrentTypes.AxonCommandExecution), CurrentTypes.AxonCommandExecution, CurrentTypes.Error>(response, func(t) { t.1 })))
       };
       case (#CanisterCommand((command,_))) {
-        let response = switch(await axon.proxy.call_raw(command.canister, command.functionName, command.argumentBinary)){
+        let response = switch(await axon.proxy.call_raw(command.canister, command.functionName, command.argumentBinary, command.cycles)){
           case(#ok(response)){#CanisterCommand((command, ?#reply(response)))};
           case(#err(err)){#CanisterCommand((command, ?#error(err)))};
         };

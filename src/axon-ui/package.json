@@ -7,8 +7,8 @@
     "dev": "next dev",
     "dev_local": "NEXT_PUBLIC_DFX_NETWORK=local next dev",
     "build": "next build",
-    "build_local" : "NEXT_PUBLIC_DFX_NETWORK=local next build",
-    "export_local" : "NEXT_PUBLIC_DFX_NETWORK=local next export",
+    "build_local": "NEXT_PUBLIC_DFX_NETWORK=local next build",
+    "export_local": "NEXT_PUBLIC_DFX_NETWORK=local next export",
     "start": "next start",
     "export": "next export",
     "copy:types": "rsync -avr ../../.dfx/$(echo ${DFX_NETWORK:-'**'})/canisters/Axon --exclude='assets/' --exclude='idl/' --exclude='*.wasm' --exclude='index.js' --delete declarations"
@@ -37,7 +37,8 @@
     "react-router-dom": "^6.4.4",
     "react-select": "^5.6.1",
     "sha.js": "^2.4.11",
-    "use-clipboard-copy": "^0.2.0"
+    "use-clipboard-copy": "^0.2.0",
+    "xss": "^1.0.14"
   },
   "devDependencies": {
     "@types/classnames": "^2.3.1",

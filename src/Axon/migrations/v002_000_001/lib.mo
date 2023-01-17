@@ -44,7 +44,11 @@ module {
                 case(#Redenominate(cmd)) #Redenominate(cmd);
               },cmd.1));
             };
-            case(#CanisterCommand(cmd)) #CanisterCommand(cmd);
+            case(#CanisterCommand(cmd)) #CanisterCommand(
+            ({cmd.0 with
+              note = "";
+              cycles = 0;
+            }, cmd.1));
             case(#NeuronCommand(cmd)) #NeuronCommand(cmd);
             
           };
@@ -79,7 +83,11 @@ module {
                 case(#Redenominate(cmd)) #Redenominate(cmd);
               },cmd.1));
             };
-            case(#CanisterCommand(cmd)) #CanisterCommand(cmd);
+            case(#CanisterCommand(cmd)) #CanisterCommand(
+            ({cmd.0 with
+              note = "";
+              cycles = 0;
+            }, cmd.1));
             case(#NeuronCommand(cmd)) #NeuronCommand(cmd);
             
           };

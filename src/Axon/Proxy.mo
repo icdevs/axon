@@ -1,6 +1,7 @@
 import Cycles "mo:base/ExperimentalCycles";
 import Error "mo:base/Error";
 import ExperimentalInternetComputer "mo:base/ExperimentalInternetComputer";
+import ExperimentalCycles "mo:base/ExperimentalCycles";
 import Principal "mo:base/Principal";
 import Result "mo:base/Result";
 
@@ -70,8 +71,12 @@ shared actor class Proxy(owner: Principal) = this {
 
 
 
-  public shared({ caller }) func call_raw(canister: Principal, functionName: Text, argumentBinary: Blob) : async Result.Result<Blob, Text> {
+  public shared({ caller }) func call_raw(canister: Principal, functionName: Text, argumentBinary: Blob, cycles: Nat) : async Result.Result<Blob, Text> {
     assert(caller == owner);
+
+    if(cycles > 0){
+      ExperimentalCycles.add(cycles);
+    };
      
     try{
       #ok(await ExperimentalInternetComputer.call(canister, functionName, argumentBinary));

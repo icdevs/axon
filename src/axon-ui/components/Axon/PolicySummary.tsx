@@ -6,7 +6,7 @@ import { DataRow, DataTable } from "../Proposal/DataTable";
 
 export default function PolicySummary({
   label,
-  policy: { proposeThreshold, proposers, acceptanceThreshold, restrictTokenTransfer, allowTokenBurn },
+  policy: { proposeThreshold, proposers, acceptanceThreshold, restrictTokenTransfer, allowTokenBurn, minters },
 }: {
   label?: string;
   policy: Policy;
@@ -18,6 +18,21 @@ export default function PolicySummary({
     owners = (
       <ul>
         {proposers.Closed.map((owner) => (
+          <li key={owner.toText()}>
+            <IdentifierLabelWithButtons type="Principal" id={owner} />
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  let minters_;
+  if ("None" in minters) {
+    minters_ = "None";
+  } else {
+    minters_ = (
+      <ul>
+        {minters.Minters.map((owner) => (
           <li key={owner.toText()}>
             <IdentifierLabelWithButtons type="Principal" id={owner} />
           </li>
@@ -51,6 +66,9 @@ export default function PolicySummary({
     <DataTable label={label}>
       <DataRow labelClassName="w-48" label="Eligible Proposers">
         {owners}
+      </DataRow>
+      <DataRow labelClassName="w-48" label="minters">
+        {minters_}
       </DataRow>
       <DataRow labelClassName="w-48" label="Proposer Requirement">
         {formatNumber(proposeThreshold)} Tokens

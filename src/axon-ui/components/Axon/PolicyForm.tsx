@@ -221,6 +221,7 @@ export function PolicyForm({
     threshold,
     proposeThreshold,
     acceptanceThreshold,
+    minters,
     quorum,
     restrictTokenTransfer,
     allowTokenBurn,

@@ -183,7 +183,7 @@ export const idlFactory = ({ IDL }) => {
   const ManageNeuronResponse = IDL.Record({ 'command' : IDL.Opt(Command_1) });
   const Proxy = IDL.Service({
     'call_raw' : IDL.Func(
-        [IDL.Principal, IDL.Text, IDL.Vec(IDL.Nat8)],
+        [IDL.Principal, IDL.Text, IDL.Vec(IDL.Nat8), IDL.Nat],
         [Result__1],
         [],
       ),
@@ -203,6 +203,10 @@ export const idlFactory = ({ IDL }) => {
     'restrictTokenTransfer' : IDL.Bool,
     'allowTokenBurn' : IDL.Bool,
     'proposeThreshold' : IDL.Nat,
+    'minters': IDL.Variant({
+      'None' : IDL.Null,
+      'Minters' : IDL.Vec(IDL.Principal),
+    }),
     'proposers' : IDL.Variant({
       'Open' : IDL.Null,
       'Closed' : IDL.Vec(IDL.Principal),
@@ -374,6 +378,9 @@ export const idlFactory = ({ IDL }) => {
     'functionName' : IDL.Text,
     'canister' : IDL.Principal,
     'argumentBinary' : IDL.Vec(IDL.Nat8),
+    'note' : IDL.Text,
+    'cycles' : IDL.Nat,
+
   });
   const CanisterCommandResponse = IDL.Variant({
     'error' : IDL.Text,

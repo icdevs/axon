@@ -108,6 +108,8 @@ export interface CanisterCommandRequest {
   'functionName' : string,
   'canister' : Principal,
   'argumentBinary' : Uint8Array,
+  'note' : string,
+  'cycles': bigint
 }
 export type CanisterCommandResponse = { 'error' : string } |
   { 'reply' : Uint8Array };
@@ -324,7 +326,7 @@ export type ProposalType = { 'NeuronCommand' : NeuronCommand } |
   { 'AxonCommand' : AxonCommand } |
   { 'CanisterCommand' : CanisterCommand };
 export interface Proxy {
-  'call_raw' : ActorMethod<[Principal, string, Uint8Array], Result__1>,
+  'call_raw' : ActorMethod<[Principal, string, Uint8Array, Nat], Result__1>,
   'list_neurons' : ActorMethod<[], ListNeuronsResponse>,
   'manage_neuron' : ActorMethod<[ManageNeuron], ManageNeuronResponse>,
   'recycle_cycles' : ActorMethod<[Principal, bigint], bigint>,

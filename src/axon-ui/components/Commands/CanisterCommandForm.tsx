@@ -21,6 +21,8 @@ export default function CanisterCommandForm({
 }) {
   const { data } = useAxonById();
   const [canisterId, setCanisterId] = useState("");
+  const [note, setNote] = useState("");
+  const [cycles, setCycles] = useState("");
   const [callFunction, setCallFunction] = useState("");
   const [callProperies, setCallProperies] = useState("");
   const [functionsOptions, setFunctionsOptions] = useState([]);
@@ -96,6 +98,8 @@ export default function CanisterCommandForm({
             functionName: callFunction,
             //@ts-ignore
             argumentBinary: Array.from(argsBinary),
+            cycles: cycles,
+            note: note
           })
           setError('');
       } catch(err) {
@@ -106,7 +110,7 @@ export default function CanisterCommandForm({
     } else {
       setCommand(null);
     }
-  }, [canisterId, callFunction, argsBinary]);
+  }, [canisterId, callFunction, argsBinary, note, cycles]);
 
   useEffect(() => {
     if (callFunction) {
@@ -135,6 +139,34 @@ export default function CanisterCommandForm({
 
   return (
     <div className="flex flex-col gap-2 py-4">
+      <div style={{display: "flex", alignItems: "flex-end", gap: "8px"}}>
+        <label className="block">
+          Note
+          <input
+            type="text"
+            placeholder="Add Note"
+            className="w-full mt-1"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            min={0}
+            required
+          />
+        </label>
+      </div>
+      <div style={{display: "flex", alignItems: "flex-end", gap: "8px"}}>
+        <label className="block">
+          Cycles
+          <input
+            type="number"
+            placeholder="0"
+            className="w-full mt-1"
+            value={cycles}
+            onChange={(e) => setCycles(e.target.value)}
+            min={0}
+            required
+          />
+        </label>
+      </div>
       <div style={{display: "flex", alignItems: "flex-end", gap: "8px"}}>
         <label className="block">
           Canister Id
