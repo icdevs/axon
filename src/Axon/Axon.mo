@@ -214,14 +214,20 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   //let a minter burn
-  public shared ({ caller }) func upgradeProxy() : async Bool {
+  public shared ({ caller }) func upgradeProxy() : async [Result.Result<Bool,Text>] {
     assert (caller == master);
+    let results = Buffer.Buffer<Result.Result<Bool,Text>>(0);
     for(thisAxon in SB.vals(state_current.axons)){
       let proxy  = thisAxon.proxy;
-      let test = await (system Proxy.Proxy)(#upgrade proxy)(Principal.fromActor(proxy)); // upgrade!
+      try{
+        let test = await (system Proxy.Proxy)(#upgrade proxy)(Principal.fromActor(proxy)); // upgrade!
+        results.add(#ok(true));
+      } catch (e){
+        results.add(#err(Error.message(e)));
+      };
     };
 
-    return true;
+    return results.toArray();
   };
 
   
