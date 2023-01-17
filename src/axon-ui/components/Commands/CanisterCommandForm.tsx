@@ -98,7 +98,7 @@ export default function CanisterCommandForm({
             functionName: callFunction,
             //@ts-ignore
             argumentBinary: Array.from(argsBinary),
-            cycles: cycles,
+            cycles: BigInt(cycles),
             note: note
           })
           setError('');

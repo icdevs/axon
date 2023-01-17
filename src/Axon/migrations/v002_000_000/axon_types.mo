@@ -14,7 +14,7 @@ module {
   public type Proxy = actor {
     list_neurons : shared () -> async GT.ListNeuronsResponse;
     manage_neuron : shared GT.ManageNeuron -> async GT.ManageNeuronResponse;
-    call_raw : shared (Principal, Text, Blob, Nat) -> async Result.Result<Blob,Text>;
+    call_raw : shared (Principal, Text, Blob) -> async Result.Result<Blob,Text>;
     recycle_cycles : shared (Principal, Nat) -> async Nat; 
   };
 
@@ -245,8 +245,6 @@ module {
     canister : Principal;
     functionName : Text;
     argumentBinary : Blob;
-    note: Text;
-    cycles: Nat;
   };
 
   public type NeuronCommandRequest = {

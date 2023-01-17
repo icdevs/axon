@@ -4,6 +4,8 @@ import v2_0_1_types = "types";
 import Map_lib "mo:map_7_0_0/Map"; 
 import SB_lib "mo:stablebuffer_0_2_0/StableBuffer"; 
 import None "mo:base/None";
+import Principal "mo:base/Principal";
+
 
 module {
 
@@ -104,7 +106,7 @@ module {
         visibility = thisItem.visibility;
         totalStake = thisItem.totalStake;
         supply = thisItem.supply;
-        proxy = thisItem.proxy;
+        proxy = actor(Principal.toText(Principal.fromActor(thisItem.proxy)));
         id = thisItem.id;
         neurons = thisItem.neurons;
         name = thisItem.name;
