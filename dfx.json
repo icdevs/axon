@@ -4,8 +4,19 @@
       "main": "src/Axon/Axon.mo",
       "type": "motoko"
     },
+    "AxonTest": {
+      "main": "src/Axon/Axon.mo",
+      "type": "motoko"
+    },
     "frontend": {
       "dependencies": ["Axon"],
+      "frontend": {
+        "entrypoint": "src/axon-ui/out/index.html"
+      },
+      "source": ["src/axon-ui/out"],
+      "type": "assets"
+    },"frontendTest": {
+      "dependencies": ["AxonTest"],
       "frontend": {
         "entrypoint": "src/axon-ui/out/index.html"
       },
