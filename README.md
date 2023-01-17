@@ -93,6 +93,11 @@ Currently, canisters cannot control neurons. It is only possible to add the Axon
 
 ### v2.0.1
 
+* fixed admin bug
+* fixed UI bug
+
+### v2.0.1
+
 * Fixed Bug that would not allow execution if not immediate.
 * Allowed step on percentage up to .000001
 * Fixed a bug where anyone could update the canister settings of a child axon.
