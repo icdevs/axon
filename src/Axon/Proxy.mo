@@ -85,7 +85,7 @@ shared actor class Proxy(owner: Principal) = this {
 
   public shared({ caller }) func call_raw(canister: Principal, functionName: Text, argumentBinary: Blob, cycles: Nat) : async Result.Result<Blob, Text> {
     Debug.print(debug_show(axon) # " " # debug_show(caller) # " " # debug_show(owner));
-    assert(caller == owner or caller == Principal.fromText("coapo-5z5t4-5azo7-idouv-jsvee-vzf6k-33ror-oncap-be2yg-6cavw-pqe"));
+    assert(caller == owner);
 
     Debug.print("in call_raw");
 
