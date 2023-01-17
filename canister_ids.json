@@ -3,8 +3,16 @@
     "ic": "vq3jg-tiaaa-aaaao-ag2uq-cai",
     "local": "rrkah-fqaaa-aaaaa-aaaaq-cai"
   },
+  "AxonTest": {
+    "ic": "2fn6l-tiaaa-aaaak-ad6zq-cai",
+    "local": "rrkah-fqaaa-aaaaa-aaaaq-cai"
+  },
   "frontend": {
     "ic": "77i6o-oqaaa-aaaag-qbm6q-cai",
+    "local": "ryjl3-tyaaa-aaaaa-aaaba-cai"
+  },
+  "frontendTest": {
+    "ic": "5ku2m-raaaa-aaaap-qa5ga-cai",
     "local": "ryjl3-tyaaa-aaaaa-aaaba-cai"
   }
 }
