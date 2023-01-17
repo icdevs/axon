@@ -54,7 +54,7 @@ export default function CanisterCommandSummary({
           <DataRow labelClassName="w-40" label="Function">
             {request.functionName}
           </DataRow>
-          <DataRow labelClassName="w-40" label="Canister">
+          <DataRow labelClassName="w-40" label="Args">
             {reqArgs || (
               <IdentifierLabelWithButtons
               type="String"

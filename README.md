@@ -96,3 +96,5 @@ Currently, canisters cannot control neurons. It is only possible to add the Axon
 * Fixed Bug that would not allow execution if not immediate.
 * Allowed step on percentage up to .000001
 * Fixed a bug where anyone could update the canister settings of a child axon.
+* Added a note and cycles to Canister calls
+* Added the ability to upgrade proxies via upgrade pathway.
