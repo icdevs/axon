@@ -119,6 +119,7 @@ export function PolicyForm({
   const { principalName } = useNames();
   const [users, setUsers] = useState(defaultProposers);
   const [proposers, setProposers] = useState<ProposersKey>(defaultProposersKey);
+  const [mintersUsers, setMintersUsers] = useState(defaultMinters);
   const [minters, setMinters] = useState<MintersKey>(defaultMintersKey);
   const [inputError, setInputError] = useState("");
   const [proposeThreshold, setProposeThreshold] = useState(
@@ -144,13 +145,13 @@ export function PolicyForm({
 
     let mintersValue: Policy["minters"];
     if (minters === "Minters") {
-      if (!users.length) {
+      if (!mintersUsers.length) {
         return makeCommand(null);
       }
 
       let members: Principal[];
       try {
-        members = users.map((value) => Principal.fromText(value));
+        members = mintersUsers.map((value) => Principal.fromText(value));
       } catch (err) {
         setInputError(`Invalid principal: ${err.message}`);
         return makeCommand(null);
@@ -222,6 +223,7 @@ export function PolicyForm({
     proposeThreshold,
     acceptanceThreshold,
     minters,
+    mintersUsers,
     quorum,
     restrictTokenTransfer,
     allowTokenBurn,
@@ -317,9 +319,9 @@ export function PolicyForm({
             className="react-select"
             placeholder="Select minters..."
             isMulti={true}
-            onChange={(values) => setUsers(values.map(({ value }) => value))}
+            onChange={(values) => setMintersUsers(values.map(({ value }) => value))}
             options={principals}
-            defaultValue={users.map((value) => ({
+            defaultValue={mintersUsers.map((value) => ({
               value,
               label: getPrincipalLabel(value),
             }))}

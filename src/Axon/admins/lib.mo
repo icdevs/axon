@@ -1,5 +1,6 @@
 import Buffer "mo:base/Buffer";
 import Types "../migrations/types";
+import SB "mo:stablebuffer/StableBuffer";
 
 module {
 
@@ -9,71 +10,46 @@ module {
     
     public type UpgradeData = Types.CurrentAdmin.UpgradeData;
 
-    public class Admins(creator : Principal) : Types.CurrentAdmin.Interface {
 
-        ////////////
-        // State //
-        //////////
-
-        private var admins : Buffer.Buffer<Principal> = Buffer.Buffer(0);
-        admins.add(creator);
-
-        public func preupgrade() : UpgradeData {
-            {
-                admins = admins.toArray();
-            }
-        };
-
-        public func postupgrade(ud : ?UpgradeData) {
-            switch(ud){
-                case(? ud) {
-                    for (admin in ud.admins.vals()){
-                        if(admin != creator){
-                            admins.add(admin);
-                        }
-                    };
-                };
-                case _ {
-                    admins.add(creator);
-                };
-            };
-        };
+    public class Admins(state: Types.CurrentAxon.State, creator : Principal) : Types.CurrentAxon.AdminInterface {
 
         //////////
         // API //
         ////////
 
-        public func isAdmin(p : Principal) : Bool {
-            for(principal in admins.vals()){
+        SB.add(state.admins, creator);
+
+        public func isAdmin(state: Types.CurrentAxon.State, p : Principal) : Bool {
+            for(principal in SB.vals(state.admins)){
                 if (principal == p) return true;
             };
             false;
         };
 
 
-        public func addAdmin(p : Principal, caller : Principal) : () {
-            assert(isAdmin(caller));
-            admins.add(p);
+        public func addAdmin(state: Types.CurrentAxon.State,p : Principal, caller : Principal) : () {
+            assert(isAdmin(state, caller));
+            SB.add<Principal>(state. admins,p);
         };
 
-        public func removeAdmin(p : Principal, caller : Principal) : () {
-            assert(isAdmin(caller));
+        public func removeAdmin(state: Types.CurrentAxon.State,p : Principal, caller : Principal) : () {
+            assert(isAdmin(state, caller));
             let newAdmins : Buffer.Buffer<Principal> = Buffer.Buffer(0);
-            for (principal in admins.vals()){
+            for (principal in SB.vals(state.admins)){
                 if(principal != p){
                     newAdmins.add(principal);
                 };
             };
             //  Make sure we never have 0 admins left
             assert(newAdmins.size() != 0);
-            admins.clear();
+            SB.clear(state.admins);
             for (principal in newAdmins.vals()){
-                admins.add(principal);
+                SB.add(state.admins, principal);
             };
         };
 
-        public func getAdmins() : [Principal] {
-            admins.toArray();
+        public func getAdmins(state: Types.CurrentAxon.State) : [Principal] {
+            SB.toArray(state.admins);
         };
     };
 };

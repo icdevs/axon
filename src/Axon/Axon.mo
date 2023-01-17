@@ -42,7 +42,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
 
 
   stable var _AdminsUD : ?Admins.UpgradeData = null;
-  let _Admins = Admins.Admins(creator);
+  
 
   stable var migration_state: MigrationTypes.State = #v0_0_0(#data);
 
@@ -51,6 +51,8 @@ shared ({ caller = creator }) actor class AxonService() = this {
   migration_state := Migrations.migrate(migration_state, #v2_0_1(#id), {creator = creator; init_axons = axonEntries_post; init_admins= _AdminsUD});
 
   let #v2_0_1(#data(state_current)) = migration_state;
+
+  let _Admins = Admins.Admins(state_current, creator);
 
   stable var admin = creator;
 
@@ -65,7 +67,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
   let Governance = actor "rrkah-fqaaa-aaaaa-aaaaq-cai" : GT.Service;
 
   // Default voting period for active proposals, 1 day
-  let DEFAULT_DURATION_SEC = 24 * 60 * 60;
+  let DEFAULT_DURATION_SEC = 7 * 24 * 60 * 60;
   // Minimum voting period for active proposals, 4 hours
   let MINIMUM_DURATION_SEC = 4 * 60 * 60;
   // Maximum voting period for active proposals, 7 days
@@ -82,20 +84,20 @@ shared ({ caller = creator }) actor class AxonService() = this {
 
   // Returns a boolean indicating if the specified principal is an admin.
   public query func is_admin(p : Principal) : async Bool {
-    _Admins.isAdmin(p);
+    _Admins.isAdmin(state_current, p);
   };
 
   // Returns a list of all the admins.
   public query ({ caller }) func get_admins() : async [Principal] {
-    assert (_Admins.isAdmin(caller));
-    _Admins.getAdmins();
+    assert (_Admins.isAdmin(state_current, caller));
+    _Admins.getAdmins(state_current);
   };
 
   // Adds the specified principal as an admin.
   public shared ({ caller }) func add_admin(p : Principal) : async () {
     assert (caller == master);
     //assert (_Admins.isAdmin(caller));
-    _Admins.addAdmin(p, caller);
+    _Admins.addAdmin(state_current, p, caller);
   };
 
 
@@ -131,7 +133,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
   public shared ({ caller }) func remove_admin(p : Principal) : async () {
     assert (caller == master);
     //assert (_Admins.isAdmin(caller));
-    _Admins.removeAdmin(p, caller);
+    _Admins.removeAdmin(state_current, p, caller);
   };
 
   //let a minter mint
@@ -466,7 +468,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
   // Create a new Axon
   public shared({ caller }) func create(init: CurrentTypes.Initialization) : async CurrentTypes.Result<CurrentTypes.AxonPublic> {
     // Verify that the caller has the Administrator role
-    assert (_Admins.isAdmin(caller));
+    assert (_Admins.isAdmin(state_current, caller));
 
     // Verify at least one ledger entry
     assert(init.ledgerEntries.size() > 0);
@@ -1166,7 +1168,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
         var tokens_removed : Nat = 0;
         if (Bool.logor(amount == 0, amount > current_balance)) {
           tokens_removed := Option.get(Map.get(axon.ledger, phash, owner), 0);
-          Map.set(axon.ledger, phash, owner, 0);
+          Map.delete(axon.ledger, phash, owner);
         } else {
           tokens_removed := amount;
           Map.set(axon.ledger, phash, owner, Option.get(Map.get(axon.ledger, phash, owner), 0) - amount);
@@ -1285,7 +1287,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
   system func postupgrade() {
     // Restore ledger hashmap from entries
 
-    _Admins.postupgrade(_AdminsUD);
+    //_Admins.postupgrade(_AdminsUD);
     _AdminsUD := null;
   };
 };

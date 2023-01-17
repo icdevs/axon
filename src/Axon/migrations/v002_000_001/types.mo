@@ -259,6 +259,24 @@ module {
 
   public type Ledger = Map.Map<Principal, Nat>;
 
+  public type AdminInterface = {
+        
+
+        //  Check if a principal is an admin.
+        isAdmin : (state: State, p : Principal) -> Bool;
+
+        //  Add a new principal as admin.
+        //  @auth : Admin
+        addAdmin : (state: State,p : Principal, caller : Principal) -> ();
+
+        //  Remove a principal from the list of admins. 
+        //  @auth : admin
+        removeAdmin : (state: State, p : Principal, caller : Principal) -> ();
+
+        // Get the list of admins.
+        getAdmins : (state: State) -> [Principal];
+    };
+
   public type State = {
     // this is the data you previously had as stable variables inside your actor class
     var axons : SB.StableBuffer<AxonFull>;

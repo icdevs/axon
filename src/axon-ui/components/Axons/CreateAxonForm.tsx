@@ -36,14 +36,22 @@ const defaultPolicyForType = (
         defaultProposers: [principal.toText()],
         defaultProposeThreshold: "1",
         defaultAcceptanceThreshold: "1",
+        defaultMintersKey : "None",
+        defaultMinters : []
       };
     case "Multisig":
       return {
         defaultProposersKey: "Open",
+        defaultMintersKey : "None",
+
+        defaultMinters : []
       };
     case "DAO":
       return {
         defaultAcceptanceThresholdKey: "Percent",
+        defaultMintersKey : "None",
+
+        defaultMinters : []
       };
   }
 };
