@@ -426,7 +426,7 @@ type CanisterCommandRequest =
    canister: principal;
    functionName: text;
    note: text;
-   cycles: Nat;
+   cycles: nat;
  };
 type CanisterCommand = 
  record {

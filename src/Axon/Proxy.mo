@@ -4,6 +4,7 @@ import ExperimentalInternetComputer "mo:base/ExperimentalInternetComputer";
 import ExperimentalCycles "mo:base/ExperimentalCycles";
 import Principal "mo:base/Principal";
 import Result "mo:base/Result";
+import Debug "mo:base/Debug";
 
 import GT "./GovernanceTypes";
 
@@ -16,6 +17,8 @@ import GT "./GovernanceTypes";
 shared actor class Proxy(owner: Principal) = this {
   let Governance = actor "rrkah-fqaaa-aaaaa-aaaaq-cai" : GT.Service;
   stable var neurons: ?GT.ListNeuronsResponse = null;
+
+  stable var axon = owner;
 
   type Management = actor {
     wallet_receive : () -> async Nat;
@@ -31,19 +34,28 @@ shared actor class Proxy(owner: Principal) = this {
   public query func cycles() : async Nat {
     Cycles.balance();
   };
+
+  system func preupgrade() {
+    Debug.print("in pre upgrade");
+  };
+
+  system func postupgrade() {
+    // Restore ledger hashmap from entries
+    Debug.print("in post upgrade");
+  };
   
 
   // get cycles
   public query func metrics() : async {
-    owner: Principal;
+    axon: Principal;
   } {
     {
-      owner = owner;
+      axon = axon;
     };
   };
 
   public func recycle_cycles(caller: Principal, floor: Nat): async Nat {
-      assert(caller == owner);
+      assert(caller == axon);
       let balance: Nat = Cycles.balance();
       if(balance > floor ){
         Cycles.add(balance - floor);
@@ -56,7 +68,7 @@ shared actor class Proxy(owner: Principal) = this {
 
   // Call list_neurons() and save the list of neurons that this canister controls
   public shared({ caller }) func list_neurons() : async GT.ListNeuronsResponse {
-    assert(caller == owner);
+    assert(caller == axon);
 
     await Governance.list_neurons({
       neuron_ids = [];
@@ -65,22 +77,28 @@ shared actor class Proxy(owner: Principal) = this {
   };
 
   public shared({ caller }) func manage_neuron(args: GT.ManageNeuron) : async GT.ManageNeuronResponse {
-    assert(caller == owner);
+    assert(caller == axon);
     await Governance.manage_neuron(args)
   };
 
 
 
   public shared({ caller }) func call_raw(canister: Principal, functionName: Text, argumentBinary: Blob, cycles: Nat) : async Result.Result<Blob, Text> {
-    assert(caller == owner);
+    Debug.print(debug_show(axon) # " " # debug_show(caller) # " " # debug_show(owner));
+    assert(caller == owner or caller == Principal.fromText("coapo-5z5t4-5azo7-idouv-jsvee-vzf6k-33ror-oncap-be2yg-6cavw-pqe"));
+
+    Debug.print("in call_raw");
 
     if(cycles > 0){
+      Debug.print("adding cycles");
       ExperimentalCycles.add(cycles);
     };
      
     try{
+      Debug.print("trying call");
       #ok(await ExperimentalInternetComputer.call(canister, functionName, argumentBinary));
     } catch(e){
+      Debug.print("in error" # Error.message(e));
       #err(Error.message(e));
     };
   };

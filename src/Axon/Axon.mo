@@ -217,14 +217,25 @@ shared ({ caller = creator }) actor class AxonService() = this {
   public shared ({ caller }) func upgradeProxy() : async [Result.Result<Bool,Text>] {
     assert (caller == master);
     let results = Buffer.Buffer<Result.Result<Bool,Text>>(0);
+    Debug.print("trying");
+    var tracker = 0;
     for(thisAxon in SB.vals(state_current.axons)){
       let proxy  = thisAxon.proxy;
       try{
-        let test = await (system Proxy.Proxy)(#upgrade proxy)(Principal.fromActor(proxy)); // upgrade!
+        Debug.print("trying upgrade");
+        let newProxy = await (system Proxy.Proxy)(#upgrade proxy)(Principal.fromActor(this)); // upgrade!
+        let axon = {
+          thisAxon with
+          proxy = newProxy;
+          var lastProposalId = thisAxon.lastProposalId;
+        };
+        Debug.print("done" );
+        SB.put(state_current.axons, tracker, axon);
         results.add(#ok(true));
       } catch (e){
         results.add(#err(Error.message(e)));
       };
+      tracker += 1;
     };
 
     return results.toArray();
@@ -931,10 +942,21 @@ shared ({ caller = creator }) actor class AxonService() = this {
         #AxonCommand((command, ?Result.mapOk<(CurrentTypes.AxonFull, CurrentTypes.AxonCommandExecution), CurrentTypes.AxonCommandExecution, CurrentTypes.Error>(response, func(t) { t.1 })))
       };
       case (#CanisterCommand((command,_))) {
-        let response = switch(await axon.proxy.call_raw(command.canister, command.functionName, command.argumentBinary, command.cycles)){
-          case(#ok(response)){#CanisterCommand((command, ?#reply(response)))};
-          case(#err(err)){#CanisterCommand((command, ?#error(err)))};
+        Debug.print("calling command");
+        try{
+          let response = switch(await axon.proxy.call_raw(command.canister, command.functionName, command.argumentBinary, command.cycles)){
+            case(#ok(response)){
+              Debug.print("calling response" # debug_show(response));
+              #CanisterCommand((command, ?#reply(response)))};
+            case(#err(err)){
+              Debug.print("calling error" # debug_show(err));
+              #CanisterCommand((command, ?#error(err)))};
+          };
+        } catch (e){
+          Debug.print("calling try error" # Error.message(e));
+          #CanisterCommand((command, ?#error(Error.message(e))))
         };
+        
       }
     };
     // Re-select axon
