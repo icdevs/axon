@@ -11,6 +11,7 @@ export default function useVote(proposalId: bigint) {
   return useMutation(
     ["vote", axonId, proposalId],
     async ({ yesNo }: { yesNo: boolean }) => {
+      console.log("vote input", axonId, proposalId, yesNo);
       const result = await tryCall(() =>
         axon.vote({
           axonId: BigInt(axonId),
@@ -18,9 +19,11 @@ export default function useVote(proposalId: bigint) {
           vote: yesNo ? { Yes: null } : { No: null },
         })
       );
+      console.log(result);
       if ("ok" in result) {
         return result.ok;
       } else {
+      
         throw errorToString(result.err);
       }
     },

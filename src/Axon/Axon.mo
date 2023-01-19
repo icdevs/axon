@@ -612,11 +612,15 @@ shared ({ caller = creator }) actor class AxonService() = this {
     var result: CurrentTypes.Result<()> = #err(#NotFound);
     var proposal: ?CurrentTypes.AxonProposal = null;
 
-    let activeProposals = Buffer.Buffer<CurrentTypes.AxonProposal>(0);
+    //let activeProposals = Buffer.Buffer<CurrentTypes.AxonProposal>(0);
+
+    var tracker = 0;
+    var foundTracker = ?0;
 
     label search for(p in SB.vals(axon.activeProposals)){
+      
       if (p.id != request.proposalId) {
-        activeProposals.add(p);
+        tracker += 1;
         continue search;
       };
 
@@ -634,8 +638,9 @@ shared ({ caller = creator }) actor class AxonService() = this {
 
       if (not canVote) {
         result := #err(#CannotVote);
-        activeProposals.add(p);
-        continue search;
+        //activeProposals.add(p);
+        tracker += 1;
+        break search;
       };
 
       let ballots = Array.map<CurrentTypes.Ballot, CurrentTypes.Ballot>(SB.toArray(p.ballots), func(b) {
@@ -657,18 +662,14 @@ shared ({ caller = creator }) actor class AxonService() = this {
       });
 
       proposal := ?A._applyExecutingStatusConditionally(A._applyNewStatus({
-        id = p.id;
-        ballots = SB.fromArray(ballots);
+        p with 
+        ballots = SB.fromArray<CurrentTypes.Ballot>(ballots);
         totalVotes = A._countVotes(ballots);
-        timeStart = p.timeStart;
-        timeEnd = p.timeEnd;
-        creator = p.creator;
-        proposal = p.proposal;
-        status = p.status;
-        policy = p.policy;
       }), true);
 
-      activeProposals.add(Option.unwrap(proposal));
+      SB.put(axon.activeProposals, tracker, Option.unwrap(proposal));
+      foundTracker := ?tracker;
+      tracker += 1;
     };
 
     if (Result.isOk(result)) {
@@ -680,12 +681,13 @@ shared ({ caller = creator }) actor class AxonService() = this {
         case (#Rejected(_)) {
           SB.add<CurrentTypes.AxonProposal>(axon.allProposals, updatedProposal);
           
-          SB.fromArray<CurrentTypes.AxonProposal>(Array.filter<CurrentTypes.AxonProposal>(activeProposals.toArray(), func(p) {
+          SB.fromArray<CurrentTypes.AxonProposal>(Array.filter<CurrentTypes.AxonProposal>(SB.toArray(axon.activeProposals), func(p) {
             p.id != updatedProposal.id
           }))
         };
         case _ { axon.activeProposals };
       };
+
       SB.put<CurrentTypes.AxonFull>(state_current.axons, axon.id, {
         axon with
         activeProposals = active_proposals;
@@ -700,9 +702,11 @@ shared ({ caller = creator }) actor class AxonService() = this {
         case _ {}
       }
     };
-
     result
   };
+
+
+
 
   // Cancel an active proposal created by caller
   public shared({ caller }) func cancel(axonId: Nat, proposalId: Nat) : async CurrentTypes.Result<CurrentTypes.AxonProposalPublic> {
