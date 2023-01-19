@@ -91,7 +91,11 @@ Currently, canisters cannot control neurons. It is only possible to add the Axon
 
 ## Release Notes
 
-### v2.0.1
+### v2.0.3
+
+* fixed voting bug
+
+### v2.0.2
 
 * fixed admin bug
 * fixed UI bug
