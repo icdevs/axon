@@ -136,9 +136,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
     _Admins.removeAdmin(state_current, p, caller);
   };
 
-  //let a minter mint
-  public shared ({ caller }) func mint(axonId: Nat, p : Principal, a: Nat) : async CurrentTypes.Result<CurrentTypes.AxonCommandExecution> {
-    
+  private func _mint(caller : Principal, axonId: Nat, p: Principal, a: Nat) : async* CurrentTypes.Result<CurrentTypes.AxonCommandExecution> {
     let axon = SB.get(state_current.axons, axonId);
     switch(axon.policy.minters){
       case(#None) return #err(#Unauthorized);
@@ -176,9 +174,34 @@ shared ({ caller = creator }) actor class AxonService() = this {
     }
   };
 
-  //let a minter burn
-  public shared ({ caller }) func burn(axonId: Nat, p : Principal, a: Nat) : async CurrentTypes.Result<CurrentTypes.AxonCommandExecution> {
-    
+  //let a minter mint
+  public shared ({ caller }) func mint(axonId: Nat, p : Principal, a: Nat) : async CurrentTypes.Result<CurrentTypes.AxonCommandExecution> {
+    return await* _mint(caller, axonId, p, a);
+  };
+
+  public shared ({ caller }) func mint_batch(request : [(Nat,Principal,Nat)]) : async [((Nat,Principal,Nat), CurrentTypes.Result<CurrentTypes.AxonCommandExecution>)] {
+    let tracker = 0;
+    let results = Buffer.Buffer<((Nat,Principal,Nat),CurrentTypes.Result<CurrentTypes.AxonCommandExecution>)>(request.size());
+    let result_buffer = Buffer.Buffer<((Nat,Principal,Nat), async* CurrentTypes.Result<CurrentTypes.AxonCommandExecution>)>(request.size());
+
+    label search for(thisItem in request.vals()){
+      result_buffer.add((thisItem.0, thisItem.1, thisItem.2), _mint(caller, thisItem.0, thisItem.1, thisItem.2));
+      if(tracker > 9){
+        for(thisItem in result_buffer.vals()){
+          results.add((thisItem.0, await* thisItem.1));
+        };
+        result_buffer.clear();
+      };
+    };
+
+    for(thisItem in result_buffer.vals()){
+      results.add(thisItem.0, await* thisItem.1);
+    };
+
+    return Buffer.toArray(results);
+  };
+
+  private func _burn(caller : Principal, axonId: Nat, p : Principal, a: Nat) : async* CurrentTypes.Result<CurrentTypes.AxonCommandExecution>{
     let axon = SB.get(state_current.axons, axonId);
     switch(axon.policy.minters){
       case(#None) return #err(#Unauthorized);
@@ -216,6 +239,33 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   //let a minter burn
+  public shared ({ caller }) func burn(axonId: Nat, p : Principal, a: Nat) : async CurrentTypes.Result<CurrentTypes.AxonCommandExecution> {
+    return await* _burn(caller, axonId, p, a);
+  };
+
+  public shared ({ caller }) func burn_batch(request : [(Nat,Principal,Nat)]) : async [((Nat,Principal,Nat), CurrentTypes.Result<CurrentTypes.AxonCommandExecution>)] {
+    let tracker = 0;
+    let results = Buffer.Buffer<((Nat,Principal,Nat),CurrentTypes.Result<CurrentTypes.AxonCommandExecution>)>(request.size());
+    let result_buffer = Buffer.Buffer<((Nat,Principal,Nat), async* CurrentTypes.Result<CurrentTypes.AxonCommandExecution>)>(request.size());
+
+    label search for(thisItem in request.vals()){
+      result_buffer.add((thisItem.0, thisItem.1, thisItem.2), _burn(caller, thisItem.0, thisItem.1, thisItem.2));
+      if(tracker > 9){
+        for(thisItem in result_buffer.vals()){
+          results.add((thisItem.0, await* thisItem.1));
+        };
+        result_buffer.clear();
+      };
+    };
+
+    for(thisItem in result_buffer.vals()){
+      results.add(thisItem.0, await* thisItem.1);
+    };
+
+    return Buffer.toArray(results);
+  };
+
+  //upgrades a proxy to the new actor type
   public shared ({ caller }) func upgradeProxy() : async [Result.Result<Bool,Text>] {
     assert (caller == master);
     let results = Buffer.Buffer<Result.Result<Bool,Text>>(0);
@@ -240,7 +290,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
       tracker += 1;
     };
 
-    return results.toArray();
+    return Buffer.toArray(results);
   };
 
   
@@ -866,7 +916,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
 
     // Move finished proposals from active to all
     if (hasChanges or finished.size() > 0) {
-      let finishedArr = finished.toArray();
+      let finishedArr = Buffer.toArray(finished);
       SB.append(axon.allProposals, SB.fromArray<CurrentTypes.AxonProposal>(finishedArr));
 
       SB.put(state_current.axons, axon.id, {
@@ -932,9 +982,9 @@ shared ({ caller = creator }) actor class AxonService() = this {
             };
             case _ {}
           };
-          proposalResponses.add((id, neuronResponses.toArray()));
+          proposalResponses.add((id, Buffer.toArray(neuronResponses)));
         };
-        #NeuronCommand((command, ?proposalResponses.toArray()))
+        #NeuronCommand((command, ?Buffer.toArray(proposalResponses)))
       };
       case (#AxonCommand((command,_))) {
         let response = _applyAxonCommand(axon, command);
