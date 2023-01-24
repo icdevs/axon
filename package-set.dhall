@@ -1,3 +1,5 @@
+let aviate_labs = https://github.com/aviate-labs/package-set/releases/download/v0.1.4/package-set.dhall sha256:30b7e5372284933c7394bad62ad742fec4cb09f605ce3c178d892c25a1a9722e
+
 let upstream = https://github.com/dfinity/vessel-package-set/releases/download/mo-0.7.3-20221102/package-set.dhall sha256:9c989bdc496cf03b7d2b976d5bf547cfc6125f8d9bb2ed784815191bd518a7b9
 let Package =
     { name : Text, version : Text, repo : Text, dependencies : List Text }
@@ -20,11 +22,27 @@ let
   , version = "v0.2.0"
   , dependencies = [ "base"]
   },
-  { name = "stablebuffer"
+  { name = "StableBuffer"
   , repo = "https://github.com/skilesare/StableBuffer"
   , version = "v0.2.0"
   , dependencies = [ "base"]
-  }] : List Package
+  },
+  { name = "icrc1"
+  , repo = "https://github.com/NatLabs/icrc1"
+  , version = "7af28bbfa7d41a20297ff6e349ee0374f9d1b576"
+  , dependencies = [ "base"]
+  },
+  {
+       name = "itertools",
+       version = "main",
+       repo = "https://github.com/NatLabs/Itertools.mo",
+       dependencies = ["base"] : List Text
+    },{
+       name = "StableTrieMap",
+       version = "main",
+       repo = "https://github.com/NatLabs/StableTrieMap",
+       dependencies = ["base"] : List Text
+    }] : List Package
 
 let
   {- This is where you can override existing packages in the package-set
@@ -41,4 +59,4 @@ let
   overrides =
     [] : List Package
 
-in  upstream # additions # overrides
+in  aviate_labs # upstream # additions # overrides

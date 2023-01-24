@@ -5,7 +5,7 @@ import Suite "mo:matchers/Suite";
 import M "mo:matchers/Matchers";
 import T "mo:matchers/Testable";
 
-import SB = "mo:stablebuffer/StableBuffer";
+import SB = "mo:StableBuffer/StableBuffer";
 
 import A "../AxonHelpers";
 import MigrationTypes "../migrations/types";

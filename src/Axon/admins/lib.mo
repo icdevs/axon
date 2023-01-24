@@ -1,6 +1,6 @@
 import Buffer "mo:base/Buffer";
 import Types "../migrations/types";
-import SB "mo:stablebuffer/StableBuffer";
+import SB "mo:StableBuffer/StableBuffer";
 
 module {
 

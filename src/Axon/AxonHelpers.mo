@@ -18,7 +18,7 @@ import MigrationTypes "migrations/types";
 import Time "mo:base/Time";
 import TrieSet "mo:base/TrieSet";
 
-import SB "mo:stablebuffer/StableBuffer";
+import SB "mo:StableBuffer/StableBuffer";
 
 module {
   let T = MigrationTypes.CurrentAxon;
