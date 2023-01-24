@@ -91,6 +91,12 @@ Currently, canisters cannot control neurons. It is only possible to add the Axon
 
 ## Release Notes
 
+### v2.1.0
+
+* moved system of record for balances to Proxy canister
+* added ICRC-1 to Proxy Canister
+* added mint_batch and burn_batch to axon for large scale burning/minting - warning - will be processed in series with awaits between each burn/mint batch of 10 - return order not guaranteed
+
 ### v2.0.3
 
 * fixed voting bug

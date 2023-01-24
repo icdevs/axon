@@ -1356,20 +1356,41 @@ shared ({ caller = creator }) actor class AxonService() = this {
       };
       case (#Transfer({amount; recipient})) {
         //transfer has been depricated. You should now transfer with the proxy using ICRC1
-        /*let senderBalance = Option.get(Map.get(axon.ledger, phash, Principal.fromActor(this)), 0);
+        let senderBalance = Option.get(Map.get(axon.ledger, phash, Principal.fromActor(this)), 0);
         if (senderBalance < amount) {
           return #err(#CannotExecute);
         };
 
-        Map.set(axon.ledger, phash, Principal.fromActor(this), senderBalance - amount);
-        Map.set(axon.ledger, phash, recipient, Option.get(Map.get(axon.ledger, phash, recipient), 0) + amount);
-        #ok(axon, #Transfer({
-          senderBalanceAfter = senderBalance - amount;
+        let proxy : Axon.Proxy = actor(Principal.toText(Principal.fromActor(axon.proxy)));
+
+
+        switch( await proxy.transfer({
+          from_subaccount = null;
+          to = {owner = recipient; subaccount = null};
           amount = amount;
-          receiver = recipient;
-        }))
-        */
-        return #err(#CannotExecute);
+          memo = null;
+          created_at_time = null;
+        })){
+          case(#Err(err)){
+            Debug.print(debug_show(err));
+            #err(#Error({error_message=debug_show(err); error_type=#canister_error;}));
+          };
+          case(#Ok(val)){
+            Debug.print(debug_show(val));
+            let freshAxon = SB.get(state_current.axons, axon.id);
+
+
+            #ok(axon.id, #Transfer({
+                receiver = recipient;
+                amount = amount;
+                senderBalanceAfter = senderBalance - amount;
+              }));
+          };
+        };
+
+        
+
+        
       };
     };
   };

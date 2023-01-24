@@ -66,12 +66,14 @@ shared actor class Proxy(owner: Principal) = this {
   };
   
 
-  // get cycles
+  // get metrics
   public query func metrics() : async {
     axon: Principal;
+    archive: Principal;
   } {
     {
       axon = axon;
+      archive = Principal.fromActor(token.archive.canister);
     };
   };
 

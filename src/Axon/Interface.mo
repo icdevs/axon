@@ -335,6 +335,15 @@ module {
         #Ok : Nat;
         #Err : TransferError;
     };
+    transfer : shared ({
+      from_subaccount: ?Blob;
+      to: {owner: Principal; subaccount: ?Blob};
+      amount: Nat;
+      memo: ?Blob;
+      created_at_time: ?Nat64}) -> async {
+        #Ok : Nat;
+        #Err : TransferError;
+    };
     sync_policy : () -> async {#ok: Bool; #err: Text};
     seed_balance : () -> async {#ok: Bool; #err: Text};
 
