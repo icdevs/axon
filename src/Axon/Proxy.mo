@@ -476,6 +476,7 @@ shared actor class Proxy(owner: Principal) = this {
       _fee: ?Nat;
       decimals: ?Nat8;
       name: ?Text;
+      symbol: ?Text;
       max_supply : ?Nat;
       _minted_tokens: ?Nat;
       _burned_tokens: ?Nat;
@@ -516,6 +517,10 @@ shared actor class Proxy(owner: Principal) = this {
             };  
             permitted_drift = switch(request.permitted_drift){
               case(null) token.permitted_drift;
+              case(?val) val;
+            };
+            symbol = switch(request.symbol){
+              case(null) token.symbol;
               case(?val) val;
             };
         };

@@ -282,7 +282,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
           var lastProposalId = thisAxon.lastProposalId;
         };
         //send more cycles
-        Cycles.add(2_000_000_000_000);// the ledger arghive needs 2T cycles
+        //Cycles.add(2_000_000_000_000);// the ledger arghive needs 2T cycles
         Debug.print("done" );
         let proxy_interface : Axon.Proxy = actor(Principal.toText(Principal.fromActor(axon.proxy)));
     
