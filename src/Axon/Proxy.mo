@@ -1,9 +1,12 @@
+import Array "mo:base/Array";
 import Blob "mo:base/Blob";
 import Buffer "mo:base/Buffer";
 import Cycles "mo:base/ExperimentalCycles";
 import Error "mo:base/Error";
 import ExperimentalInternetComputer "mo:base/ExperimentalInternetComputer";
+import HashMap "mo:base/HashMap";
 import Int "mo:base/Int";
+import Iter "mo:base/Iter";
 import Option "mo:base/Option";
 import Principal "mo:base/Principal";
 import Result "mo:base/Result";
@@ -24,6 +27,9 @@ import A "./AxonHelpers";
 
 import StableTrieMap "mo:StableTrieMap";
 import SB "mo:StableBuffer/StableBuffer";
+import httpparser "mo:httpparser/lib";
+import json "mo:json/JSON";
+import AccountIdentifier "mo:principal/AccountIdentifier";
 
 
 /**
@@ -89,14 +95,20 @@ shared actor class Proxy(owner: Principal) = this {
       return 0;
   };
 
+  
+
   // Call list_neurons() and save the list of neurons that this canister controls
   public shared({ caller }) func list_neurons() : async GT.ListNeuronsResponse {
     assert(caller == axon);
 
-    await Governance.list_neurons({
+    let response  = await Governance.list_neurons({
       neuron_ids = [];
       include_neurons_readable_by_caller = true;
     });
+
+    neurons := ?response;
+
+    response;
   };
 
   public shared({ caller }) func manage_neuron(args: GT.ManageNeuron) : async GT.ManageNeuronResponse {
@@ -104,6 +116,112 @@ shared actor class Proxy(owner: Principal) = this {
     await Governance.manage_neuron(args)
   };
 
+  public type HeaderField = (Text, Text);
+
+  public type StreamingCallbackToken =  {
+        content_encoding: Text;
+        index: Nat;
+        key: Text;
+        //sha256: ?Blob;
+    };
+
+  public type StreamingStrategy = {
+       #Callback: {
+          callback: shared () -> async ();
+          token: StreamingCallbackToken;
+        };
+    };
+
+
+  public type HttpRequest = {
+      body: Blob;
+      headers: [HeaderField];
+      method: Text;
+      url: Text;
+  };
+
+  public type HTTPResponse = {
+    body               : Blob;
+    headers            : [HeaderField];
+    status_code        : Nat16;
+    streaming_strategy : ?StreamingStrategy;
+  };
+
+
+  // Handles http request
+  public query(msg) func http_request(rawReq: HttpRequest): async (HTTPResponse) {
+    let req = httpparser.parse(rawReq);
+    let {host; port; protocol; path; queryObj; anchor; original = url} = req.url;
+
+    let path_size = req.url.path.array.size();
+    let path_array = req.url.path.array;
+
+
+      if(path_size == 0) {
+        let main_text = Buffer.Buffer<Text>(1);
+        main_text.add("Axon " # Nat.toText(axonId));
+
+        return {
+          body = Text.encodeUtf8(Text.join("", main_text.vals()));
+          headers = [("Content-Type", "text/plain")];
+          status_code = 200;
+          streaming_strategy = null;
+        };
+      } else if(path_size == 1 and path_array[0] == "neurons") {
+
+        let list = switch(neurons){
+          case(null){
+            [];
+          };
+          case(?val) val.full_neurons;
+        };
+
+
+        let an_arr = Array.map<GT.Neuron, json.JSON>(list, func (thisItem) : json.JSON {
+
+          let h = HashMap.HashMap<Text, json.JSON>(3, Text.equal, Text.hash);
+          
+            h.put("id", #String(debug_show(Option.unwrap(thisItem.id))));
+            h.put("controller", #String(Principal.toText(Option.unwrap(thisItem.controller))));
+            h.put("kyc_verified", #Boolean(thisItem.kyc_verified));
+            h.put("not_for_profit", #Boolean(thisItem.not_for_profit));
+            h.put("maturity_e8s_equivalent", #Number(Nat64.toNat(thisItem.maturity_e8s_equivalent)));
+            h.put("cached_neuron_stake_e8s", #Number(Nat64.toNat(thisItem.cached_neuron_stake_e8s)));
+            h.put("created_timestamp_seconds", #Number(Nat64.toNat(thisItem.created_timestamp_seconds)));
+            h.put("aging_since_timestamp_seconds", #Number(Nat64.toNat(thisItem.aging_since_timestamp_seconds)));
+            h.put("account", #String(AccountIdentifier.toText(thisItem.account) ));
+            h.put("dissolve_state", #Number(Nat64.toNat(switch(Option.get<GT.DissolveState>(thisItem.dissolve_state, #DissolveDelaySeconds(0))){
+              case(#DissolveDelaySeconds(x)){x};
+              case(#WhenDissolvedTimestampSeconds(x)){x};
+            })));
+            h.put("dissolve_state_type", #String((switch(Option.get<GT.DissolveState>(thisItem.dissolve_state, #DissolveDelaySeconds(0))){
+              case(#DissolveDelaySeconds(x)){"DissolveDelaySeconds"};
+              case(#WhenDissolvedTimestampSeconds(x)){"WhenDissolvedTimestampSeconds"};
+            })));
+
+
+          #Object(h);
+      });
+
+      let finalArr : json.JSON = #Array(an_arr);
+      
+
+        return {
+          body = Text.encodeUtf8(json.show(finalArr));
+          headers = [("Content-Type", "application/json")];
+          status_code = 200;
+          streaming_strategy = null;
+        };
+
+      } else {
+        return {
+          body = Text.encodeUtf8("404 not found");
+          headers = [("Content-Type", "text/plain")];
+          status_code = 404;
+          streaming_strategy = null;
+        };
+      };
+  };
 
 
   public shared({ caller }) func call_raw(canister: Principal, functionName: Text, argumentBinary: Blob, cycles: Nat) : async Result.Result<Blob, Text> {

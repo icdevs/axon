@@ -33,6 +33,12 @@ let
   , dependencies = [ "base"]
   },
   {
+    name = "httpparser",     
+    repo = "https://github.com/skilesare/http-parser.mo",
+    version = "v0.1.0",
+    dependencies = ["base"]
+  },
+  {
        name = "itertools",
        version = "main",
        repo = "https://github.com/NatLabs/Itertools.mo",
