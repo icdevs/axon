@@ -621,14 +621,22 @@ shared ({ caller = creator }) actor class AxonService() = this {
 
     // Snapshot the ledger at creation
     //todo: Convert to map
-    let ballots = SB.fromArray<CurrentTypes.Ballot>(Array.map<CurrentTypes.LedgerEntry, CurrentTypes.Ballot>(Iter.toArray(Map.entries(axon.ledger)), func((p,n)) {
-      {
-        principal = p;
-        votingPower = n;
-        // Auto vote for caller
-        vote = if (p == caller) { ?(#Yes) } else { null };
-      }
-    }));
+    // Get all voters that are not the treasury
+    let treasuryId = Principal.fromActor(axon.proxy);
+    let eligibleVoters: [(Principal, Nat)] = Iter.toArray(Iter.filter(Map.entries(axon.ledger)), func((p:Principal,_):Bool {p != treasury}));
+    let ballots = SB.fromArray<CurrentTypes.Ballot>(
+      Array.map<, CurrentTypes.Ballot>(
+        eligibleVoters,
+        func((p : Principal, n : Nat)) : CurrentTypes.Ballot {
+          {
+            principal = p;
+            votingPower = n;
+            // Auto vote for caller
+            vote = if (p == caller) { ?(#Yes) } else { null };
+          };
+        },
+      ),
+    );
     let now = Time.now();
     let timeStart = clamp(
       Option.get(Option.map(request.timeStart, secsToNanos), now),
