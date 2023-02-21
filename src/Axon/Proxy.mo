@@ -25,6 +25,8 @@ import Nat64 "mo:base/Nat64";
 import Time "mo:base/Time";
 import A "./AxonHelpers";
 
+import Map "mo:map/Map";
+
 import StableTrieMap "mo:StableTrieMap";
 import SB "mo:StableBuffer/StableBuffer";
 import httpparser "mo:httpparser/lib";
@@ -45,6 +47,16 @@ shared actor class Proxy(owner: Principal) = this {
 
   type Management = actor {
     wallet_receive : () -> async Nat;
+  };
+
+  type BatchCommand = {#Mint: {to : ICRC1.Account;
+    amount : Nat;
+    memo : ?Blob;
+    created_at_time : ?Nat64;};
+    #Burn: {from : ICRC1.Account;
+    amount : ?Nat;
+    memo : ?Blob;
+    created_at_time : ?Nat64;};
   };
 
   func accept_all_cycles() : Nat{
@@ -176,8 +188,10 @@ shared actor class Proxy(owner: Principal) = this {
           case(?val) val.full_neurons;
         };
 
+        let items = Buffer.Buffer<Text>(1);
 
-        let an_arr = Array.map<GT.Neuron, json.JSON>(list, func (thisItem) : json.JSON {
+
+        ignore Array.map<GT.Neuron, Text>(list, func (thisItem) : Text {
 
           let h = HashMap.HashMap<Text, json.JSON>(3, Text.equal, Text.hash);
           
@@ -200,14 +214,16 @@ shared actor class Proxy(owner: Principal) = this {
             })));
 
 
-          #Object(h);
+          items.add(json.show(#Object(h)));
+
+          return "";
       });
 
-      let finalArr : json.JSON = #Array(an_arr);
+      
       
 
         return {
-          body = Text.encodeUtf8(json.show(finalArr));
+          body = Text.encodeUtf8("[" # Text.join(",", items.vals()) # "]");
           headers = [("Content-Type", "application/json")];
           status_code = 200;
           streaming_strategy = null;
@@ -394,17 +410,19 @@ shared actor class Proxy(owner: Principal) = this {
     };
 
     public shared ({ caller }) func burn(args : {from : ICRC1.Account;
-      amount : Nat;
+      amount : ?Nat;
       memo : ?Blob;
       created_at_time : ?Nat64;}) : async ICRC1.TransferResult {
         assert(caller == axon);
-        if(allow_burn == true){
+        if(allow_burn == false){
           return #Err(#GenericError({ error_code = 2; message = "This token does not allow burn" }));
         };
-        let result = await ICRC1.burn(token, {from_subaccount = null; amount = args.amount; memo= args.memo; created_at_time = args.created_at_time;}, args.from.owner);
+        let result = await ICRC1.burn(token, {from_subaccount = null; amount = switch(args.amount){
+          case(null) {ICRC1.balance_of(token, args.from);};
+          case(?val) val;
+        }; memo= args.memo; created_at_time = args.created_at_time;}, args.from.owner);
 
         let requests = Buffer.Buffer<(Principal, Nat)>(2);
-
 
         switch(result){
           case(#Ok(val)){
@@ -424,6 +442,81 @@ shared actor class Proxy(owner: Principal) = this {
 
 
         return result;
+    };
+
+    public shared ({ caller }) func mint_burn_batch(args : [BatchCommand]) : async [ICRC1.TransferResult] {
+        assert(caller == axon);
+        if(Array.find<BatchCommand>(args, func(x : BatchCommand){
+          switch(x){
+            case(#Burn(val)) return true;
+            case(_) return false;
+          };
+        }) != null){
+          if(allow_burn == false){
+            return [#Err(#GenericError({ error_code = 2; message = "This token does not allow burn" }))];
+          };
+        };
+
+        let all_results = Buffer.Buffer<ICRC1.TransferResult>(1);
+
+        let accruedAccounts = Map.new<Principal, Nat>();
+
+        for(thisItem in args.vals()){
+          switch(thisItem){
+            case(#Mint(args)){
+              let result = await ICRC1.mint(token, {
+                args with
+                from_subaccount = ?minting_subaccount}, Principal.fromActor(this));
+
+              switch(result){
+                case(#Ok(val)){
+                  if(args.to.subaccount == null){ //only null subaccounts can be members of the dao
+                    
+                    let account_balance = ICRC1Utils.get_balance(token.accounts, ICRC1Account.encode(args.to));
+                    Debug.print("sending a refresh " # debug_show((args.to.owner, account_balance)));
+                    ignore Map.put<Principal,Nat>(accruedAccounts, Map.phash, args.to.owner, account_balance);
+                    
+                    
+                  };
+                };
+                case(_){};
+              };
+
+              all_results.add(result);
+            };
+            case(#Burn(args)){
+              let result = await ICRC1.burn(token, {from_subaccount = null; amount = switch(args.amount){
+                case(null) {ICRC1.balance_of(token, args.from);};
+                case(?val) val;
+              }; memo= args.memo; created_at_time = args.created_at_time;}, args.from.owner);
+              switch(result){
+                case(#Ok(val)){
+                
+                  if(args.from.subaccount == null){ //only null subaccounts can be members of the dao
+                    let account_balance = ICRC1Utils.get_balance(token.accounts, ICRC1Account.encode(args.from));
+                    Debug.print("sending a refresh " # debug_show((args.from.subaccount, account_balance)));
+                    ignore Map.put<Principal,Nat>(accruedAccounts, Map.phash, args.from.owner, account_balance);
+                  }
+                };
+                case(_){};
+              };
+
+              all_results.add(result);
+            };
+            
+
+          };
+        };
+
+        let axon_service : Axon.Self = actor(Principal.toText(axon));
+
+        //need to refresh all accounts 9 at a time
+        
+        let thisAxon = axon_service.refreshBalances(axonId, Iter.toArray<(Principal, Nat)>(Map.entries<Principal, Nat>(accruedAccounts)));
+        
+
+        return all_results.toArray();
+        
     };
 
     // Functions for integration with the rosetta standard

@@ -19,6 +19,7 @@ import TrieSet "mo:base/TrieSet";
 
 import SB "mo:StableBuffer/StableBuffer";
 import Map "mo:map/Map";
+import Set "mo:map/Set";
 
 import Admins "admins";
 
@@ -50,9 +51,9 @@ shared ({ caller = creator }) actor class AxonService() = this {
 
   // Do not forget to change #v0_1_0 when you are adding a new migration
   // If you use one previous state in place of #v0_1_0 it will run downgrade methods instead
-  migration_state := Migrations.migrate(migration_state, #v2_0_1(#id), {creator = creator; init_axons = axonEntries_post; init_admins= _AdminsUD});
+  migration_state := Migrations.migrate(migration_state, #v2_0_2(#id), {creator = creator; init_axons = axonEntries_post; init_admins= _AdminsUD});
 
-  let #v2_0_1(#data(state_current)) = migration_state;
+  let #v2_0_2(#data(state_current)) = migration_state;
 
   let _Admins = Admins.Admins(state_current, creator);
 
@@ -140,19 +141,8 @@ shared ({ caller = creator }) actor class AxonService() = this {
 
   private func _mint(caller : Principal, axonId: Nat, p: Principal, a: Nat) : async* CurrentTypes.Result<CurrentTypes.AxonCommandExecution> {
     let axon = SB.get(state_current.axons, axonId);
-    switch(axon.policy.minters){
-      case(#None) return #err(#Unauthorized);
-      case(#Minters(val)){
-        var found : ?Principal = null;
-        label search for(thisItem in val.vals()){
-          if(thisItem == caller){
-            found := ?caller;
-            break search;
-          };
-        };
-        if(?found == null){return #err(#Unauthorized) };
-      };
-    };
+    if (not isMinter(axon, caller)) return #err(#Unauthorized);
+      
 
     let command : CurrentTypes.AxonCommandRequest =  #Mint({amount = a; recipient = ?p});
     let response = await* _applyAxonCommand(axon, command);
@@ -180,43 +170,9 @@ shared ({ caller = creator }) actor class AxonService() = this {
     return await* _mint(caller, axonId, p, a);
   };
 
-  public shared ({ caller }) func mint_batch(request : [(Nat,Principal,Nat)]) : async [((Nat,Principal,Nat), CurrentTypes.Result<CurrentTypes.AxonCommandExecution>)] {
-    let tracker = 0;
-    let results = Buffer.Buffer<((Nat,Principal,Nat),CurrentTypes.Result<CurrentTypes.AxonCommandExecution>)>(request.size());
-    let result_buffer = Buffer.Buffer<((Nat,Principal,Nat), async* CurrentTypes.Result<CurrentTypes.AxonCommandExecution>)>(request.size());
-
-    label search for(thisItem in request.vals()){
-      result_buffer.add((thisItem.0, thisItem.1, thisItem.2), _mint(caller, thisItem.0, thisItem.1, thisItem.2));
-      if(tracker > 9){
-        for(thisItem in result_buffer.vals()){
-          results.add((thisItem.0, await* thisItem.1));
-        };
-        result_buffer.clear();
-      };
-    };
-
-    for(thisItem in result_buffer.vals()){
-      results.add(thisItem.0, await* thisItem.1);
-    };
-
-    return Buffer.toArray(results);
-  };
-
   private func _burn(caller : Principal, axonId: Nat, p : Principal, a: Nat) : async* CurrentTypes.Result<CurrentTypes.AxonCommandExecution>{
     let axon = SB.get(state_current.axons, axonId);
-    switch(axon.policy.minters){
-      case(#None) return #err(#Unauthorized);
-      case(#Minters(val)){
-        var found : ?Principal = null;
-        label search for(thisItem in val.vals()){
-          if(thisItem == caller){
-            found := ?caller;
-            break search;
-          };
-        };
-        if(?found == null){return #err(#Unauthorized) };
-      };
-    };
+    if (not isMinter(axon, caller)) return #err(#Unauthorized);
 
     let command : CurrentTypes.AxonCommandRequest =  #Burn({amount = a; owner = p});
     var maybeNewAxon: ?CurrentTypes.AxonFull = null;
@@ -243,26 +199,37 @@ shared ({ caller = creator }) actor class AxonService() = this {
     return await* _burn(caller, axonId, p, a);
   };
 
-  public shared ({ caller }) func burn_batch(request : [(Nat,Principal,Nat)]) : async [((Nat,Principal,Nat), CurrentTypes.Result<CurrentTypes.AxonCommandExecution>)] {
+  private func _mint_burn_batch(caller : Principal, axonId: Nat, request: [MigrationTypes.CurrentAxon.MintBurnBatchProposal]) : async* CurrentTypes.Result<CurrentTypes.AxonCommandExecution>{
+    let axon = SB.get(state_current.axons, axonId);
+    Debug.print("found caller for auth " # debug_show(caller, axon.policy.minters) );
+    if (not isMinter(axon, caller)) return #err(#Unauthorized);
+
+    let command : CurrentTypes.AxonCommandRequest =  #Mint_Burn_Batch(request);
+    var maybeNewAxon: ?CurrentTypes.AxonFull = null;
+    let response = await* _applyAxonCommand(axon, command);
+    switch (response) {
+      case (#ok((newAxon,_))) {
+        maybeNewAxon := ?SB.get(state_current.axons, newAxon);
+      };
+      case _ {}
+    };
+
+    switch(response){
+      case(#ok(val)){
+        #ok(val.1);
+      };
+      case(#err(err)){
+        #err(err);
+      };
+    }
+  };
+
+  public shared ({ caller }) func mint_burn_batch(axon_id: Nat, request : [MigrationTypes.CurrentAxon.MintBurnBatchProposal]) : async CurrentTypes.Result<CurrentTypes.AxonCommandExecution> {
     let tracker = 0;
     let results = Buffer.Buffer<((Nat,Principal,Nat),CurrentTypes.Result<CurrentTypes.AxonCommandExecution>)>(request.size());
-    let result_buffer = Buffer.Buffer<((Nat,Principal,Nat), async* CurrentTypes.Result<CurrentTypes.AxonCommandExecution>)>(request.size());
 
-    label search for(thisItem in request.vals()){
-      result_buffer.add((thisItem.0, thisItem.1, thisItem.2), _burn(caller, thisItem.0, thisItem.1, thisItem.2));
-      if(tracker > 9){
-        for(thisItem in result_buffer.vals()){
-          results.add((thisItem.0, await* thisItem.1));
-        };
-        result_buffer.clear();
-      };
-    };
 
-    for(thisItem in result_buffer.vals()){
-      results.add(thisItem.0, await* thisItem.1);
-    };
-
-    return Buffer.toArray(results);
+    return await* _mint_burn_batch(caller, axon_id, request);
   };
 
   //upgrades a proxy to the new actor type
@@ -279,6 +246,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
         let axon = {
           thisAxon with
           proxy = newProxy;
+          var supply = thisAxon.supply;
           var lastProposalId = thisAxon.lastProposalId;
         };
         //send more cycles
@@ -395,7 +363,14 @@ shared ({ caller = creator }) actor class AxonService() = this {
     switch (Array.find<CurrentTypes.AxonProposal>(SB.toArray(activeProposals), func(p) { p.id == proposalId })) {
       case (?found) {
         #ok({found with
-          ballots = SB.toArray(found.ballots);
+          ballots = Iter.toArray(Iter.map<CurrentTypes.Ballot, CurrentTypes.BallotPublic>(Map.vals<Principal, CurrentTypes.Ballot>(found.ballots), func(x){
+            {
+              votingPower = x.votingPower;
+              vote = x.vote;
+              principal = x.principal;
+              voted_by = x.voted_by;
+            }
+          }));
           status = SB.toArray(found.status);
         }
         );
@@ -405,7 +380,14 @@ shared ({ caller = creator }) actor class AxonService() = this {
         switch(item){
           case(null) #err(#NotFound);
           case(?item) #ok{item with
-          ballots = SB.toArray(item.ballots);
+          ballots = Iter.toArray(Iter.map<CurrentTypes.Ballot, CurrentTypes.BallotPublic>(Map.vals<Principal, CurrentTypes.Ballot>(item.ballots), func(x){
+            {
+              votingPower = x.votingPower;
+              vote = x.vote;
+              principal = x.principal;
+              voted_by = x.voted_by;
+            }
+          }));
           status = SB.toArray(item.status)};
         };
       }
@@ -421,7 +403,14 @@ shared ({ caller = creator }) actor class AxonService() = this {
 
     #ok(Array.map<CurrentTypes.AxonProposal, CurrentTypes.AxonProposalPublic>(SB.toArray<CurrentTypes.AxonProposal>(activeProposals), func(p) : CurrentTypes.AxonProposalPublic{
       {p with
-        ballots = SB.toArray(p.ballots);
+        ballots = Iter.toArray(Iter.map<CurrentTypes.Ballot, CurrentTypes.BallotPublic>(Map.vals<Principal, CurrentTypes.Ballot>(p.ballots), func(x){
+            {
+              votingPower = x.votingPower;
+              vote = x.vote;
+              principal = x.principal;
+              voted_by = x.voted_by;
+            }
+          }));
         status = SB.toArray(p.status);
       };
     }
@@ -452,7 +441,14 @@ shared ({ caller = creator }) actor class AxonService() = this {
       let items = filtered.get(size - i - 1);
 
       {items with
-       ballots = SB.toArray(items.ballots);
+       ballots = Iter.toArray(Iter.map<CurrentTypes.Ballot, CurrentTypes.BallotPublic>(Map.vals<Principal, CurrentTypes.Ballot>(items.ballots), func(x){
+            {
+              votingPower = x.votingPower;
+              vote = x.vote;
+              principal = x.principal;
+              voted_by = x.voted_by;
+            }
+          }));
         status = SB.toArray(items.status);
       };
       
@@ -473,7 +469,14 @@ shared ({ caller = creator }) actor class AxonService() = this {
           switch (command) {
             case (#Motion(motion)) {
               return ?{p with
-                ballots = SB.toArray(p.ballots);
+                ballots = Iter.toArray(Iter.map<CurrentTypes.Ballot, CurrentTypes.BallotPublic>(Map.vals<Principal, CurrentTypes.Ballot>(p.ballots), func(x){
+                  {
+                    votingPower = x.votingPower;
+                    vote = x.vote;
+                    principal = x.principal;
+                    voted_by = x.voted_by;
+                  }
+                }));
                 status = SB.toArray(p.status);
               };
             };
@@ -522,7 +525,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
     if (amount > balance) {
       #err(#InsufficientBalance)
     } else {
-      Map.set(ledger, phash, caller, balance - amount);
+      Map.set(ledger, phash, caller, Nat.sub(balance,amount));
       Map.set(ledger, phash, dest, Option.get(Map.get(ledger,phash, dest), 0) + amount);
       #ok
     }
@@ -547,12 +550,14 @@ shared ({ caller = creator }) actor class AxonService() = this {
       name = init.name;
       visibility = init.visibility;
       policy = init.policy;
-      supply = supply;
+      var supply = supply;
       ledger = Map.fromIter<Principal, Nat>(init.ledgerEntries.vals(), phash);
       neurons = null;
       totalStake = 0;
       allProposals = SB.init<CurrentTypes.AxonProposal>();
       activeProposals = SB.init<CurrentTypes.AxonProposal>();
+      delegations_by_owner = Map.new<Principal,Principal>();
+      delegations_by_delegate = Map.new<Principal, Set.Set<Principal>>();
       var lastProposalId = 0;
     };
 
@@ -621,19 +626,21 @@ shared ({ caller = creator }) actor class AxonService() = this {
 
     // Snapshot the ledger at creation
     //todo: Convert to map
-    let ballots = SB.fromArray<CurrentTypes.Ballot>(Array.map<CurrentTypes.LedgerEntry, CurrentTypes.Ballot>(Iter.toArray(Map.entries(axon.ledger)), func((p,n)) {
-      {
+    let ballots = Map.fromIter<Principal, CurrentTypes.Ballot>(Iter.map<CurrentTypes.LedgerEntry, (Principal, CurrentTypes.Ballot)>(Map.entries<Principal, Nat>(axon.ledger), func((p: Principal,n : Nat)) {
+      (p, {
+        var voted_by = null;
         principal = p;
         votingPower = n;
         // Auto vote for caller
-        vote = if (p == caller) { ?(#Yes) } else { null };
-      }
-    }));
+        var vote = if (p == caller) { ?(#Yes) } else { null };
+      })
+    }),phash);
     let now = Time.now();
     let timeStart = clamp(
       Option.get(Option.map(request.timeStart, secsToNanos), now),
       now, now + secsToNanos(MAXIMUM_FUTURE_START)
     );
+
     // Create the proposal, count ballots, then execute if conditions are met
     let newProposal: CurrentTypes.AxonProposal = A._applyExecutingStatusConditionally(A._applyNewStatus({
       id = axon.lastProposalId;
@@ -642,15 +649,10 @@ shared ({ caller = creator }) actor class AxonService() = this {
         Option.get(request.durationSeconds, DEFAULT_DURATION_SEC),
         MINIMUM_DURATION_SEC, MAXIMUM_DURATION_SEC
       ));
+
       ballots = ballots;
-      totalVotes = Array.foldLeft<CurrentTypes.Ballot, CurrentTypes.Votes>(
-        SB.toArray(ballots), {yes = 0; no = 0; notVoted = 0}, func({yes; no; notVoted}, {vote; votingPower}) {
-          {
-            yes = if (vote == ?#Yes) { yes + votingPower } else { yes };
-            no = no;
-            notVoted = if (Option.isNull(vote)) { notVoted + votingPower } else { notVoted }
-          }
-        });
+
+      totalVotes = A._countVotes(ballots);
       creator = caller;
       proposal = request.proposal;
       status = SB.fromArray<CurrentTypes.Status>([#Created(now)]);
@@ -669,7 +671,14 @@ shared ({ caller = creator }) actor class AxonService() = this {
     };
 
     #ok({newProposal with
-      ballots = SB.toArray(newProposal.ballots);
+      ballots = Iter.toArray(Iter.map<CurrentTypes.Ballot, CurrentTypes.BallotPublic>(Map.vals<Principal, CurrentTypes.Ballot>(newProposal.ballots), func(x){
+            {
+              votingPower = x.votingPower;
+              vote = x.vote;
+              principal = x.principal;
+              voted_by = x.voted_by;
+            }
+          }));
       status = SB.toArray(newProposal.status);
     });
   };
@@ -716,28 +725,32 @@ shared ({ caller = creator }) actor class AxonService() = this {
         break search;
       };
 
-      let ballots = Array.map<CurrentTypes.Ballot, CurrentTypes.Ballot>(SB.toArray(p.ballots), func(b) {
+      //this recreates the ballots everytime...is expensive...refactor to variable data
+      let delegateSet = switch(Map.get<Principal,Set.Set<Principal>>(axon.delegations_by_delegate, phash, caller)){
+        case(null){Set.new<Principal>()};
+        case(?val){val};
+      };
+
+      Map.forEach<Principal, CurrentTypes.Ballot>(p.ballots, func(principal: Principal, b: CurrentTypes.Ballot) {
         if (b.principal == caller) {
           if (Option.isSome(b.vote)) {
             result := #err(#AlreadyVoted);
-            return b
           } else {
             result := #ok();
-            return {
-              principal = caller;
-              votingPower = b.votingPower;
-              vote = ?request.vote;
-            }
+            b.vote := ?request.vote;
           }
-        } else {
-          return b;
-        }
+        } else if(Set.has(delegateSet, phash, b.principal)){
+          if (Option.isSome(b.vote)) {} else {
+            result := #ok();
+            b.voted_by := ?caller;
+            b.vote :=?request.vote;
+          };
+        }; 
       });
 
       proposal := ?A._applyExecutingStatusConditionally(A._applyNewStatus({
         p with 
-        ballots = SB.fromArray<CurrentTypes.Ballot>(ballots);
-        totalVotes = A._countVotes(ballots);
+        totalVotes = A._countVotes(p.ballots);
       }), true);
 
       SB.put(axon.activeProposals, tracker, Option.unwrap(proposal));
@@ -764,6 +777,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
       SB.put<CurrentTypes.AxonFull>(state_current.axons, axon.id, {
         axon with
         activeProposals = active_proposals;
+        var supply = axon.supply;
         var lastProposalId = axon.lastProposalId;
       });
 
@@ -776,6 +790,76 @@ shared ({ caller = creator }) actor class AxonService() = this {
       }
     };
     result
+  };
+
+  // Vote on an active proposal
+  public shared({ caller }) func delegate(axonId: Nat, owner: Principal, target_delegate: ?Principal) : async CurrentTypes.Result<()> {
+    let axon = SB.get(state_current.axons, axonId);
+    let bMinter = isMinter(axon, caller);
+    if ((not isAuthed(caller, axon.ledger)) and (not bMinter)) {
+      return #err(#Unauthorized)
+    };
+
+    if(owner == caller or bMinter){
+      let currentDelegate = Map.get<Principal,Principal>(axon.delegations_by_owner, phash, owner);
+
+      switch(target_delegate, currentDelegate){
+        case(null, null){
+            //not currently following and no longer wants to follow. Should be unreachable
+        };
+        case(?target_delegate, ?currentDelegate){
+          //wants to follow someone new
+          ignore Map.put<Principal, Principal>(axon.delegations_by_owner, phash, owner, target_delegate);
+        
+          switch(Map.get(axon.delegations_by_delegate, phash, target_delegate)){
+            case(null){
+              let newSet = Set.fromIter<Principal>([owner].vals(), phash);
+              ignore Map.put<Principal, Set.Set<Principal>>(axon.delegations_by_delegate, phash, target_delegate, newSet);
+            };
+            case(?val){
+              ignore Set.put(val, phash, owner);
+            };
+          };
+
+          switch(Map.get<Principal, Set.Set<Principal>>(axon.delegations_by_delegate, phash, currentDelegate)){
+            case(null){
+              //nothing to do
+            };
+            case(?val){
+              Set.delete(val, phash, owner);
+            };
+          };
+        };
+        case(null, ?currentDelegate){
+          //setting the current delegate to null
+          Map.delete(axon.delegations_by_owner, phash, owner);
+
+          switch(Map.get(axon.delegations_by_delegate, phash, currentDelegate)){
+            case(null){
+              //nothing to do
+            };
+            case(?val){
+              Set.delete(val, phash, owner);
+            };
+          };
+        };
+        case(?target_delegate, null){
+          ignore Map.put(axon.delegations_by_owner, phash, owner, target_delegate);
+        
+          switch(Map.get(axon.delegations_by_delegate, phash, target_delegate)){
+            case(null){
+              let newSet = Set.fromIter<Principal>([owner].vals(), phash);
+              ignore Map.put(axon.delegations_by_delegate, phash, target_delegate, newSet);
+            };
+            case(?val){
+              ignore Set.put(val, phash, owner);
+            };
+          };
+        };
+      };
+    };
+
+    return #ok;
   };
 
   // Cancel an active proposal created by caller
@@ -815,12 +899,20 @@ shared ({ caller = creator }) actor class AxonService() = this {
       activeProposals = SB.fromArray<CurrentTypes.AxonProposal>(Array.filter<CurrentTypes.AxonProposal>(updatedActiveProposals.toArray(), func(p) {
         p.id != proposal.id
       }));
+      var supply = axon.supply;
       var lastProposalId = axon.lastProposalId;
     });
 
     #ok({proposal
       with
-      ballots = SB.toArray(proposal.ballots);
+      ballots = Iter.toArray(Iter.map<CurrentTypes.Ballot, CurrentTypes.BallotPublic>(Map.vals<Principal, CurrentTypes.Ballot>(proposal.ballots), func(x){
+            {
+              votingPower = x.votingPower;
+              vote = x.vote;
+              principal = x.principal;
+              voted_by = x.voted_by;
+            }
+          }));
       status = SB.toArray(proposal.status);}
     );
   };
@@ -852,6 +944,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
     SB.put(state_current.axons, axon.id, {
       axon with
       activeProposals = SB.fromArray<CurrentTypes.AxonProposal>(activeProposals);
+      var supply = axon.supply;
       var lastProposalId = axon.lastProposalId;
     });
 
@@ -879,19 +972,12 @@ shared ({ caller = creator }) actor class AxonService() = this {
     };
 
     SB.put(state_current.axons, id, {
-      id = axon.id;
-      proxy = axon.proxy;
-      name = axon.name;
-      visibility = axon.visibility;
-      supply = axon.supply;
-      ledger = axon.ledger;
-      policy = axon.policy;
+      axon with 
+      var supply = axon.supply;
       neurons = ?neurons;
       totalStake = Array.foldLeft<GT.Neuron, Nat>(response.full_neurons, 0, func(sum, c) {
         sum + Nat64.toNat(c.cached_neuron_stake_e8s)
       });
-      allProposals = axon.allProposals;
-      activeProposals = axon.activeProposals;
       var lastProposalId = axon.lastProposalId;
     });
 
@@ -901,7 +987,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
     #ok(neurons)
   };
 
-  // Call list_neurons() and save the list of neurons that this axon's proxy controls
+  // refreshes balances from the proxy wallet which holds state
   public shared({ caller }) func refreshBalances(axonId: Nat, accounts : [(account: Principal, balance: Nat)]) : async [CurrentTypes.Result<Bool>] {
     let axon = SB.get(state_current.axons, axonId);
 
@@ -911,8 +997,11 @@ shared ({ caller = creator }) actor class AxonService() = this {
     }; //only the proxy can refresh a balance
 
     let results = Buffer.Buffer<CurrentTypes.Result<Bool>>(accounts.size());
+    var supplyChange : Int = 0;
     for(thisAccount in accounts.vals()){
       //here we trust that the balance provided is true since the proxy is the record of account
+      let current_balance : Int = Option.get(Map.get(axon.ledger, phash, thisAccount.0),0);
+      supplyChange += (thisAccount.1 - current_balance);
       if(thisAccount.1 == 0){
         Map.delete(axon.ledger, phash, thisAccount.0);
       } else {
@@ -920,6 +1009,11 @@ shared ({ caller = creator }) actor class AxonService() = this {
       };
       
       results.add(#ok(true));
+    };
+    if(supplyChange > 0){
+      axon.supply += Int.abs(supplyChange);
+    } else {
+       axon.supply -= Int.abs(supplyChange);
     };
     Buffer.toArray(results);
   };
@@ -965,6 +1059,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
       SB.put(state_current.axons, axon.id, {
         axon with 
         activeProposals = SB.fromArray<CurrentTypes.AxonProposal>(filteredActiveProposals);
+        var supply = axon.supply;
         var lastProposalId = axon.lastProposalId;
       });
     };
@@ -997,6 +1092,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
         if (p.id == proposal.id ) { startedProposal }
         else p
       }));
+      var supply = axon.supply;
       var lastProposalId = axon.lastProposalId;
     });
 
@@ -1068,11 +1164,19 @@ shared ({ caller = creator }) actor class AxonService() = this {
     SB.put(state_current.axons, newAxon.id, {
       newAxon with 
       activeProposals = SB.fromArray<CurrentTypes.AxonProposal>(Array.filter<CurrentTypes.AxonProposal>(SB.toArray(newAxon.activeProposals), func(p) { p.id != startedProposal.id }));
+      var supply = newAxon.supply;
       var lastProposalId = newAxon.lastProposalId;
     });
 
     {startedProposal with 
-      ballots = SB.toArray(startedProposal.ballots);
+      ballots = Iter.toArray(Iter.map<CurrentTypes.Ballot, CurrentTypes.BallotPublic>(Map.vals<Principal, CurrentTypes.Ballot>(startedProposal.ballots), func(x){
+            {
+              votingPower = x.votingPower;
+              vote = x.vote;
+              principal = x.principal;
+              voted_by = x.voted_by;
+            }
+          }));
       status =  SB.toArray(startedProposal.status);
     }
   };
@@ -1089,17 +1193,9 @@ shared ({ caller = creator }) actor class AxonService() = this {
           case _ {}
         };
         SB.put(state_current.axons, axon.id, {
-          id = axon.id;
-          proxy = axon.proxy;
-          name = axon.name;
-          visibility = axon.visibility;
-          supply = axon.supply;
-          ledger = axon.ledger;
+          axon with
+          var supply = axon.supply;
           policy = policy;
-          neurons = axon.neurons;
-          totalStake = axon.totalStake;
-          allProposals = axon.allProposals;
-          activeProposals = axon.activeProposals;
           var lastProposalId = axon.lastProposalId;
         });
 
@@ -1108,17 +1204,9 @@ shared ({ caller = creator }) actor class AxonService() = this {
       };
       case (#SetVisibility(visibility)) {
         SB.put(state_current.axons, axon.id, {
-          id = axon.id;
-          proxy = axon.proxy;
-          name = axon.name;
+          axon with
           visibility = visibility;
-          supply = axon.supply;
-          ledger = axon.ledger;
-          policy = axon.policy;
-          neurons = axon.neurons;
-          totalStake = axon.totalStake;
-          allProposals = axon.allProposals;
-          activeProposals = axon.activeProposals;
+          var supply = axon.supply;
           var lastProposalId = axon.lastProposalId;
         });
         
@@ -1127,6 +1215,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
       case (#Motion(motion)) {
         SB.put(state_current.axons, axon.id, {
           axon with 
+          var supply = axon.supply;
           var lastProposalId = axon.lastProposalId;
         });
 
@@ -1147,6 +1236,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
                 proposers = #Closed(Array.append(current, diff));
                 
               };
+              var supply = axon.supply;
               var lastProposalId = axon.lastProposalId;
             });
 
@@ -1174,6 +1264,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
                 axon.policy with 
                 proposers = #Closed(diff);
               };
+              var supply = axon.supply;
               var lastProposalId = axon.lastProposalId;
             });
 
@@ -1202,6 +1293,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
             axon.policy with
             minters = #Minters(Array.append(current, diff));
           };
+          var supply = axon.supply;
           var lastProposalId = axon.lastProposalId;
         });
 
@@ -1223,6 +1315,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
                 axon.policy with 
                 minters = #Minters(diff);
               };
+              var supply = axon.supply;
               var lastProposalId = axon.lastProposalId;
             });
 
@@ -1247,7 +1340,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
         
         SB.put(state_current.axons, axon.id, {
           fresh_axon with 
-          supply = newSupply;
+          var supply = newSupply;
           policy = {
             fresh_axon.policy with
             proposeThreshold = A.scaleByFraction(fresh_axon.policy.proposeThreshold, to, from);
@@ -1302,12 +1395,6 @@ shared ({ caller = creator }) actor class AxonService() = this {
             Debug.print(debug_show(val));
             let freshAxon = SB.get(state_current.axons, axon.id);
             let newSupply : Nat = freshAxon.supply + amount;
-            SB.put(state_current.axons, axon.id, {
-              freshAxon with
-              supply = newSupply;
-              var lastProposalId = freshAxon.lastProposalId;
-            });
-
             #ok(axon.id, #SupplyChanged({ from = axon.supply; to = newSupply }));
           };
         };
@@ -1323,7 +1410,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
         //  Map.set(axon.ledger, phash, owner, Option.get(Map.get(axon.ledger, phash, owner), 0) - amount);
         //};
 
-         Debug.print("Applying Burn");
+        Debug.print("Applying Burn");
         let proxy : Axon.Proxy = actor(Principal.toText(Principal.fromActor(axon.proxy)));
 
 
@@ -1344,15 +1431,127 @@ shared ({ caller = creator }) actor class AxonService() = this {
             Debug.print(debug_show(val));
             let freshAxon = SB.get(state_current.axons, axon.id);
             let newSupply : Nat = freshAxon.supply - amount;
-            SB.put(state_current.axons, axon.id, {
-              freshAxon with
-              supply = newSupply;
-              var lastProposalId = freshAxon.lastProposalId;
-            });
+            #ok(axon.id, #SupplyChanged({ from = axon.supply; to = newSupply }));
+          };
+        };
+      };
+      case (#BurnAll({owner})) {
+        let current_balance = Option.get(Map.get(axon.ledger, phash, owner), 0);
+        //var tokens_removed : Nat = 0;
+        //if (Bool.logor(amount == 0, amount > current_balance)) {
+        //  tokens_removed := Option.get(Map.get(axon.ledger, phash, owner), 0);
+        //  Map.delete(axon.ledger, phash, owner);
+        //} else {
+        //  tokens_removed := amount;
+        //  Map.set(axon.ledger, phash, owner, Option.get(Map.get(axon.ledger, phash, owner), 0) - amount);
+        //};
+
+        Debug.print("Applying Burn");
+        let proxy : Axon.Proxy = actor(Principal.toText(Principal.fromActor(axon.proxy)));
+
+
+        switch( await proxy.burn({
+          from = {
+            owner = owner;
+            subaccount = null
+          };
+          amount = current_balance;
+          memo = null;
+          created_at_time = null;
+        })){
+          case(#Err(err)){
+            Debug.print(debug_show(err));
+            #err(#Error({error_message=debug_show(err); error_type=#canister_error;}));
+          };
+          case(#Ok(val)){
+            Debug.print(debug_show(val));
+            let freshAxon = SB.get(state_current.axons, axon.id);
+            let newSupply : Nat = freshAxon.supply - current_balance;
 
             #ok(axon.id, #SupplyChanged({ from = axon.supply; to = newSupply }));
           };
         };
+      };
+      case (#Mint_Burn_Batch(items)) {
+        
+        //var tokens_removed : Nat = 0;
+        //if (Bool.logor(amount == 0, amount > current_balance)) {
+        //  tokens_removed := Option.get(Map.get(axon.ledger, phash, owner), 0);
+        //  Map.delete(axon.ledger, phash, owner);
+        //} else {
+        //  tokens_removed := amount;
+        //  Map.set(axon.ledger, phash, owner, Option.get(Map.get(axon.ledger, phash, owner), 0) - amount);
+        //};
+
+        Debug.print("Applying Transfer Batch");
+        let proxy : MigrationTypes.CurrentAxon.Proxy = actor(Principal.toText(Principal.fromActor(axon.proxy)));
+
+        let requestBuffer = Buffer.Buffer<MigrationTypes.CurrentAxon.MintBurnBatchCommand>(1);
+        
+        var finalSupplyChange : Int = 0;
+
+        for(thisItem in items.vals()){
+          requestBuffer.add(switch(thisItem){
+            case(#Mint(val)){
+              finalSupplyChange += val.amount;
+              #Mint({
+                to = {
+                  owner = Option.get(val.owner, Principal.fromActor(proxy));
+                  subaccount = null;
+                };
+                amount = val.amount;
+                memo = null;
+                created_at_time = null;
+              });
+            };
+            case(#Burn(val)){
+              finalSupplyChange -= switch(val.amount){
+                case(?val){val};
+                case(null){switch(Map.get<Principal,Nat>(axon.ledger, phash, val.owner)){
+                  case(null) 0;
+                  case(?val) val;
+                }};
+              };
+              #Burn({
+                from = {
+                  owner = val.owner;
+                  subaccount = null;
+                };
+                amount = val.amount;
+                memo = null;
+                created_at_time = null;
+              });
+            };
+          });
+        };
+
+        let results = await proxy.mint_burn_batch(requestBuffer.toArray());
+
+        
+
+        let freshAxon = SB.get(state_current.axons, axon.id);
+
+        
+        var tracker = 0;
+        for(thisItem in results.vals()){
+          switch(thisItem){
+            case(#Err(err)){
+              Debug.print(debug_show(err));
+              if(tracker == 0){
+                return #err(#Error({error_message=debug_show(err); error_type=#canister_error;}));
+              } else {
+                //do we assume they all worked or all failed. 
+              }
+            };
+            case(#Ok(val)){
+              Debug.print(debug_show(val));
+            };
+          };
+          tracker += 1;
+        };
+        let newSupplyInt : Int = freshAxon.supply  + finalSupplyChange;
+        #ok(axon.id, #SupplyChanged({ from = axon.supply; to = Int.abs(Int.max(newSupplyInt, 0 )) }));
+        
       };
       case (#Transfer({amount; recipient})) {
         //transfer has been depricated. You should now transfer with the proxy using ICRC1
@@ -1387,10 +1586,6 @@ shared ({ caller = creator }) actor class AxonService() = this {
               }));
           };
         };
-
-        
-
-        
       };
     };
   };
@@ -1429,6 +1624,24 @@ shared ({ caller = creator }) actor class AxonService() = this {
       case (?balance) { balance > 0 };
       case _ { false };
     })
+  };
+
+  func isMinter(axon : CurrentTypes.AxonFull, principal: Principal) : Bool{
+
+    switch(axon.policy.minters){
+      case(#None) return false;
+      case(#Minters(val)){
+        var found : ?Principal = null;
+        label search for(thisItem in val.vals()){
+          if(thisItem == principal){
+            found := ?principal;
+            break search;
+          };
+        };
+        if(found == null){return false };
+        return true;
+      };
+    };
   };
 
   // Return neuron IDs from stored neuron_infos

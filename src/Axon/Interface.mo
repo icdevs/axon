@@ -432,6 +432,7 @@ module {
     is_admin : shared query Principal -> async Bool;
     ledger : shared query Nat -> async [LedgerEntry];
     mint : shared (Nat, Principal, Nat) -> async Result_4;
+    mint_burn_batch : shared ([{#mint:(Nat, Principal, Nat);#burn:(Nat, Principal, Nat);}]) -> async [Result_4];
     myAxons : shared query () -> async [AxonPublic];
     propose : shared NewProposal -> async Result_3;
     recycle_cycles : shared (Nat, Nat) -> async Nat;

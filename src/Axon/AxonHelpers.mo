@@ -19,22 +19,37 @@ import Time "mo:base/Time";
 import TrieSet "mo:base/TrieSet";
 
 import SB "mo:StableBuffer/StableBuffer";
+import Map "mo:map/Map";
 
 module {
   let T = MigrationTypes.CurrentAxon;
 
-  public func _countVotes(ballots: [T.Ballot]): T.Votes {
-    Array.foldLeft<T.Ballot, T.Votes>(
-      ballots, { yes = 0; no = 0; notVoted = 0}, func(sums, {vote; votingPower}) {
-        if (vote == ?#Yes) {
-          { yes = sums.yes + votingPower; no = sums.no; notVoted = sums.notVoted }
-        } else if (vote == ?#No) {
-          { yes = sums.yes; no = sums.no + votingPower; notVoted = sums.notVoted }
+  public func _countVotes(ballots: Map.Map<Principal, T.Ballot>): T.Votes {
+    var yes = 0;
+    var no = 0;
+    var notVoted = 0;
+
+    Map.forEach<Principal, T.Ballot>(ballots, func(principal: Principal, ballot: T.Ballot){
+      if (ballot.vote == ?#Yes) {
+          yes += ballot.votingPower; 
+      
+        } else if (ballot.vote == ?#No) {
+          no += ballot.votingPower;
         } else {
-          { yes = sums.yes; no = sums.no; notVoted = sums.notVoted + votingPower }
-        }
-      }
+         notVoted += ballot.votingPower 
+        };
+
+        return;
+    }
+    
+
     );
+
+    {
+      yes = yes;
+      no = no;
+      notVoted = notVoted;
+    };
   };
 
   // Applies a status like Accepted, Rejected or Expired based on current conditions

@@ -1,12 +1,14 @@
 import Map_lib "mo:map_7_0_0/Map"; 
+import Set_lib "mo:map_7_0_0/Set"; 
 import SB_lib "mo:stablebuffer_0_2_0/StableBuffer"; 
 import GT "../../GovernanceTypes"; 
 
 import Buffer "mo:base/Buffer"; 
 import Result "mo:base/Result"; 
 import Error "mo:base/Error"; 
+import ICRC1 "mo:icrc1/ICRC1"; 
 
-import v2_0_0 "../v002_000_000/axon_types";
+import v2_0_1 "../v002_000_001/types";
 
 module {
   
@@ -14,24 +16,10 @@ module {
   
 
   public let Map = Map_lib;
+  public let Set = Set_lib;
   public let SB = SB_lib;
 
-  public type Error = {
-    #NotAllowedByPolicy;
-    #Unauthorized;
-    #InvalidProposal;
-    #NotFound;
-    #ProposalNotFound;
-    #NoNeurons;
-    #CannotExecute;
-    #NotProposer;
-    #InsufficientBalanceToPropose;
-    #CannotVote;
-    #AlreadyVoted;
-    #InsufficientBalance;
-    #GovernanceError: GT.GovernanceError;
-    #Error: { error_message : Text; error_type : Error.ErrorCode };
-  };
+  public type Error = v2_0_1.Error;
 
   public type Result<T> = Result.Result<T, Error>;
 
@@ -44,71 +32,68 @@ module {
     policy: Policy;
   };
 
-  public type VoteRequest = v2_0_0.VoteRequest;
+  public type VoteRequest = v2_0_1.VoteRequest;
 
-  public type NeuronsResult = v2_0_0.NeuronsResult;
+  public type NeuronsResult = v2_0_1.NeuronsResult;
 
-  public type NewProposal = {
-    axonId: Nat;
-    durationSeconds: ?Nat;
-    timeStart: ?Int;
-    proposal: ProposalType;
-    execute: ?Bool;
-  };
-
+  public type NewProposal = v2_0_1.NewProposal;
 
   //admins
-  public type UpgradeData = {
-        admins : [Principal];
-    };
+  public type UpgradeData = v2_0_1.UpgradeData;
+
+  public type MintBurnBatchCommand =  {
+    #Mint: {
+      to : ICRC1.Account;
+      amount : Nat;
+      memo : ?Blob;
+      created_at_time : ?Nat64;};
+    #Burn: {
+      from : ICRC1.Account;
+      amount : ?Nat;
+      memo : ?Blob;
+      created_at_time : ?Nat64;};
+  };
 
   public type Proxy = actor {
     list_neurons : shared () -> async GT.ListNeuronsResponse;
     manage_neuron : shared GT.ManageNeuron -> async GT.ManageNeuronResponse;
     call_raw : shared (Principal, Text, Blob, Nat) -> async Result.Result<Blob,Text>;
+    mint_burn_batch : (args : [MintBurnBatchCommand]) -> async [ICRC1.TransferResult];
     recycle_cycles : shared (Principal, Nat) -> async Nat; 
   };
 
-  public type Visibility = { #Private; #Public };
-  public type LedgerEntry = (Principal, Nat);
+  public type Visibility = v2_0_1.Visibility;
+  public type LedgerEntry = v2_0_1.LedgerEntry;
 
-  public type Policy = {
-    proposers: { #Open; #Closed: [Principal] };
-    proposeThreshold: Nat;
-    acceptanceThreshold: Threshold;
-    allowTokenBurn: Bool;
-    restrictTokenTransfer: Bool;
-    minters: {#None; #Minters:[Principal]};
-  };
+  public type Policy = v2_0_1.Policy;
 
   // Minimum threshold of votes required
-  public type Threshold = {
-    #Percent: { percent: Nat; quorum: ?Nat }; // proportion times 1e8, ie. 100% = 1e8
-    #Absolute: Nat;
-  };
+  public type Threshold = v2_0_1.Threshold;
 
-  public type Vote = {
-    #Yes;
-    #No;
-  };
+  public type Vote = v2_0_1.Vote;
 
   public type Ballot = {
+    var voted_by: ?Principal;
+    principal: Principal;
+    votingPower: Nat;
+    var vote: ?Vote;
+  };
+
+  public type BallotPublic = {
+    voted_by: ?Principal;
     principal: Principal;
     votingPower: Nat;
     vote: ?Vote;
   };
 
-  public type Votes = {
-    notVoted: Nat;
-    yes: Nat;
-    no: Nat;
-  };
+  public type Votes = v2_0_1.Votes;
 
-  public type Motion = {
-    title: Text;
-    url: Text;
-    body: Text;
-  };
+  public type Motion = v2_0_1.Motion;
+
+  public type MintBurnBatchProposal = { 
+        #Mint: {amount: Nat; owner: ?Principal};
+        #Burn: {amount: ?Nat; owner: Principal};
+      };
 
   public type AxonCommandRequest = {
     #SetPolicy: Policy;
@@ -135,74 +120,48 @@ module {
     // Mints new tokens to the principal if specified, or Axon itself otherwise
     #Mint: { amount: Nat; recipient: ?Principal };
 
+    
+
     // Burns existing tokens owned by the principal specified
     #Burn: { amount: Nat; owner: Principal };
+
+    #Mint_Burn_Batch: [{ 
+        #Mint: {amount: Nat; owner: ?Principal};
+        #Burn: {amount: ?Nat; owner: Principal};
+      }
+    ];
+
+    #BurnAll: { owner: Principal };
 
     // Transfers tokens from Axon to the specified principal
     #Transfer: { amount: Nat; recipient: Principal };
   };
-  public type AxonCommandExecution = {
-    #Ok;
-    #SupplyChanged: { from: Nat; to: Nat };
-    #Transfer: {
-      receiver: Principal;
-      amount: Nat;
-      senderBalanceAfter: Nat;
-    };
-  };
+
+  public type AxonCommandExecution = v2_0_1.AxonCommandExecution;
+  
   public type AxonCommandResponse = Result<AxonCommandExecution>;
 
-  public type NeuronCommandRequest = {
-    neuronIds: ?[Nat64];
-    command: GT.Command;
-  };
+  public type NeuronCommandRequest = v2_0_1.NeuronCommandRequest;
 
-  public type ManageNeuronResponseOrProposal = {
-    #ManageNeuronResponse: Result<GT.ManageNeuronResponse>;
-    #ProposalInfo: Result<?GT.ProposalInfo>;
-  };
+  public type ManageNeuronResponseOrProposal = v2_0_1.ManageNeuronResponseOrProposal;
   public type NeuronCommandResponse = (Nat64, [ManageNeuronResponseOrProposal]);
 
-  public type CanisterCommandResponse = {
-    #reply : Blob;
-    #error : Text;
-  };
+  public type CanisterCommandResponse = v2_0_1.CanisterCommandResponse;
 
-  public type CanisterCommandRequest = {
-    canister : Principal;
-    functionName : Text;
-    argumentBinary : Blob;
-    note: Text;
-    cycles: Nat;
-  };
+  public type CanisterCommandRequest = v2_0_1.CanisterCommandRequest;
 
 
   public type AxonCommand = (AxonCommandRequest, ?AxonCommandResponse);
-  public type NeuronCommand = (NeuronCommandRequest, ?[NeuronCommandResponse]);
-  public type CanisterCommand = (CanisterCommandRequest, ?CanisterCommandResponse);
+  public type NeuronCommand = v2_0_1.NeuronCommand;
+  public type CanisterCommand = v2_0_1.CanisterCommand;
 
-  public type ProposalType = {
-    #AxonCommand: AxonCommand;
-    #NeuronCommand: NeuronCommand;
-    #CanisterCommand: CanisterCommand;
-  };
+  public type ProposalType = v2_0_1.ProposalType;
 
-  public type Status = {
-    #Created: Int;
-    #Active: Int;
-    #Accepted: Int;
-    #ExecutionQueued: Int;
-    #ExecutionStarted: Int;
-    #ExecutionTimedOut: Int;
-    #ExecutionFinished: Int;
-    #Rejected: Int;
-    #Expired: Int;
-    #Cancelled: Int;
-  };
+  public type Status = v2_0_1.Status;
 
   public type AxonProposal = {
     id: Nat;
-    ballots: SB.StableBuffer<Ballot>;
+    ballots: Map.Map<Principal, Ballot>;
     totalVotes: Votes;
     timeStart: Int;
     timeEnd: Int;
@@ -214,7 +173,7 @@ module {
 
   public type AxonProposalPublic = {
     id: Nat;
-    ballots: [Ballot];
+    ballots: [BallotPublic];
     totalVotes: Votes;
     timeStart: Int;
     timeEnd: Int;
@@ -224,23 +183,22 @@ module {
     policy: Policy;
   };
 
-  public type Neurons = {
-    response: GT.ListNeuronsResponse;
-    timestamp: Int;
-  };
+  public type Neurons = v2_0_1.Neurons;
 
   public type AxonFull = {
     id: Nat;
     proxy: Proxy;
     name: Text;
     visibility: Visibility;
-    supply: Nat;
+    var supply: Nat;
     ledger: Ledger;
     policy: Policy;
     neurons: ?Neurons;
     totalStake: Nat;
     allProposals: SB.StableBuffer<AxonProposal>;
     activeProposals: SB.StableBuffer<AxonProposal>;
+    delegations_by_owner: Map.Map<Principal,Principal>;
+    delegations_by_delegate: Map.Map<Principal, Set.Set<Principal>>;
     var lastProposalId: Nat;
   };
 
@@ -257,7 +215,7 @@ module {
     tokenHolders: Nat;
   };
 
-  public type Ledger = Map.Map<Principal, Nat>;
+  public type Ledger = v2_0_1.Ledger;
 
   public type AdminInterface = {
         

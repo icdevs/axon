@@ -1,5 +1,6 @@
 import Debug "mo:base/Debug";
 import Principal "mo:base/Principal";
+import Iter "mo:base/Iter";
 
 import Suite "mo:matchers/Suite";
 import M "mo:matchers/Matchers";
@@ -18,21 +19,26 @@ let p3 = Principal.fromText("rkp4c-7iaaa-aaaaa-aaaca-cai");
 
 let ballots: [Types.Ballot] = [
   {
+    var voted_by = null;
     principal = p1;
     votingPower = 50;
-    vote = ?#Yes
+    var vote = ?#Yes
   }, {
     principal = p2;
     votingPower = 50;
-    vote = null
+    var vote = null;
+    var voted_by = null;
   }
 ];
 
 func makeActiveProposal(policy: Types.Policy, ballots: [Types.Ballot]): Types.AxonProposal {
+  let theseballots = Types.Map.fromIter<Principal, Types.Ballot>(Iter.map<Types.Ballot, (Principal, Types.Ballot)>(ballots.vals(), func(x: Types.Ballot){
+      (x.principal, x);
+    }), Types.Map.phash);
   {
     id = 0;
-    totalVotes = A._countVotes(ballots);
-    ballots = SB.fromArray<Types.Ballot>(ballots);
+    totalVotes = A._countVotes(theseballots);
+    ballots = theseballots;
     timeStart = 10;
     timeEnd = 100;
     creator = p1;
@@ -49,10 +55,13 @@ func currentStatus(s: SB.StableBuffer<Types.Status>): Types.Status {
 let suite = Suite.suite("AxonProposal", [
   Suite.testLazy("only percent: created",
     func(): Text {
+      let theseballots = Types.Map.fromIter<Principal, Types.Ballot>(Iter.map<Types.Ballot, (Principal, Types.Ballot)>(ballots.vals(), func(x: Types.Ballot){
+      (x.principal, x);
+    }), Types.Map.phash);
       let prop0 = A._applyNewStatusWithTime({
         id = 0;
-        totalVotes = A._countVotes(ballots);
-        ballots = SB.fromArray(ballots);
+        totalVotes = A._countVotes(theseballots);
+        ballots = theseballots;
         timeStart = 10;
         timeEnd = 100;
         creator = p1;
@@ -96,17 +105,20 @@ let suite = Suite.suite("AxonProposal", [
           restrictTokenTransfer = false;
       }, [
         {
+          var voted_by = null;
           principal = p1;
           votingPower = 25;
-          vote = ?#Yes
+          var vote = ?#Yes
         }, {
+          var voted_by = null;
           principal = p2;
           votingPower = 25;
-          vote = ?#No
+          var vote = ?#No
         }, {
+          var voted_by = null;
           principal = p3;
           votingPower = 50;
-          vote = null
+          var vote = null
         }
       ]), 42);
 
@@ -130,17 +142,20 @@ let suite = Suite.suite("AxonProposal", [
           restrictTokenTransfer = false;
       }, [
         {
+          var voted_by = null;
           principal = p1;
           votingPower = 25;
-          vote = ?#Yes
+          var vote = ?#Yes
         }, {
+          var voted_by = null;
           principal = p2;
           votingPower = 25;
-          vote = ?#No
+          var vote = ?#No
         }, {
+          var voted_by = null;
           principal = p3;
           votingPower = 50;
-          vote = null
+          var vote = null
         }
       ]), 42);
       Debug.print("only percent: expire: before: " # debug_show(currentStatus(prop0.status)));
@@ -185,17 +200,20 @@ let suite = Suite.suite("AxonProposal", [
           restrictTokenTransfer = false;
     }, [
       {
+        var voted_by = null;
         principal = p1;
         votingPower = 1;
-        vote = ?#Yes
+        var vote = ?#Yes
       }, {
+        var voted_by = null;
         principal = p2;
         votingPower = 1;
-        vote = null
+        var vote = null
       }, {
+        var voted_by = null;
         principal = p3;
         votingPower = 1;
-        vote = null
+        var vote = null
       }
     ]), 42).status)),
     M.equals(T.text("#Active(0)"))
@@ -211,17 +229,20 @@ let suite = Suite.suite("AxonProposal", [
           restrictTokenTransfer = false;
     }, [
       {
+        var voted_by = null;
         principal = p1;
         votingPower = 50;
-        vote = ?#Yes
+        var vote = ?#Yes
       }, {
+        var voted_by = null;
         principal = p2;
         votingPower = 1;
-        vote = ?#No
+        var vote = ?#No
       }, {
+        var voted_by = null;
         principal = p3;
         votingPower = 49;
-        vote = null
+        var vote = null
       }
     ]), 42).status)),
     M.equals(T.text("#Accepted(+42)"))
