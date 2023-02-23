@@ -12,7 +12,7 @@ export default function AllAxons() {
 
   return (
     <Panel className="custom-panel">
-      <div className="flex gap-2 items-center mb-2">
+      <div className="container shadow-md p-6 m-2 flex gap-2 items-center mb-2">
         <h2 className="text-xl font-bold">All Axons</h2>
         <RefreshButton
           isFetching={isFetching}

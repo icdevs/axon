@@ -41,7 +41,7 @@ const Root: React.FC = () => {
           <Head>
             <title>{process.env.PAGE_TITLE}</title>
           </Head>
-          <div className="flex flex-col items-center" style={{backgroundColor: "#F7F3E9"}}>
+          <div className="flex flex-col items-center" style={{backgroundColor: "#D9D7D8"}}>
             <div className="flex flex-col justify-between min-h-screen w-full sm:max-w-screen-lg px-4">
               <main className="flex flex-col justify-start">
                 <Nav />

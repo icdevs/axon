@@ -17,7 +17,7 @@ export default function Nav() {
   return (
     <nav className="py-4 flex flex-col sm:flex-row items-center justify-between border-b border-black border-opacity-10">
       <Link to="/">
-        <img src={`/img/${process.env.LOGO_ICON}`} className="h-12 cursor-pointer" />
+        <img src={`/img/${process.env.LOGO_ICON}`} className="h-36 cursor-pointer" />
       </Link>
       <div className="flex items-center gap-4">
         {principal && !principal.isAnonymous() && (
