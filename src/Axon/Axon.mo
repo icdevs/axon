@@ -634,14 +634,19 @@ shared ({ caller = creator }) actor class AxonService() = this {
           p != treasuryId;
         }
       ));
+
+    let delegateSet = switch(Map.get<Principal,Set.Set<Principal>>(axon.delegations_by_delegate, phash, caller)){
+        case(null){Set.new<Principal>()};
+        case(?val){val};
+      };
     
     let ballots = Map.fromIter<Principal, CurrentTypes.Ballot>(Iter.map<CurrentTypes.LedgerEntry, (Principal, CurrentTypes.Ballot)>(eligibleVoters.vals(), func((p: Principal,n : Nat)) {
       (p, {
         var voted_by = null;
         principal = p;
         votingPower = n;
-        // Auto vote for caller
-        var vote = if (p == caller) { ?(#Yes) } else { null };
+        // Auto vote for caller and delegates
+        var vote = if (p == caller or Set.has<Principal>(delegateSet, phash, p)) { ?(#Yes) } else { null };
       })
     }), phash);
 
