@@ -91,6 +91,17 @@ Currently, canisters cannot control neurons. It is only possible to add the Axon
 
 ## Release Notes
 
+### v2.1.1
+
+* added vote delegation
+* allowed minters to manage delegation
+* removed mint_batch and burn_batch and replaced with mint_burn_batch
+* removed treasury's right to vote
+* converted ballots to a Map for performance
+* added #BurnAll and #Mint_Burn_Batch. UI has not been completed for this.
+* added JSON view of neurons to Proxy at /neurons.
+* Fixed bug where anyone could mint or burn
+
 ### v2.1.0
 
 * moved system of record for balances to Proxy canister

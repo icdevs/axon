@@ -807,7 +807,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
     result
   };
 
-  // Vote on an active proposal
+  // Delegate to another principal
   public shared({ caller }) func delegate(axonId: Nat, owner: Principal, target_delegate: ?Principal) : async CurrentTypes.Result<()> {
     let axon = SB.get(state_current.axons, axonId);
     let bMinter = isMinter(axon, caller);

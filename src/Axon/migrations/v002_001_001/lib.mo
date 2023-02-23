@@ -22,7 +22,7 @@ module {
 
   public func upgrade(prev_migration_state: MigrationTypes.State, args: MigrationTypes.Args): MigrationTypes.State {
 
-    Debug.print("in upgrade to v2.0.2");
+    Debug.print("in upgrade to v2.1.1");
 
     let axons = SB_lib.init<v2_1_1_types.AxonFull>();
 
