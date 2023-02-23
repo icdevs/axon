@@ -21,9 +21,9 @@ module.exports = {
   },
   env: {
     AXON_CANISTER_ID,
-    LOGO_ICON: "logo.svg",
+    LOGO_ICON: "logo2.png",
     GLOBAL_STYLES: "globals.css",
-    PAGE_TITLE: "ICDevs Governance Tool",
+    PAGE_TITLE: "VoIC",
   },
   async rewrites() {
     return [
