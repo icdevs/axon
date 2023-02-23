@@ -625,8 +625,17 @@ shared ({ caller = creator }) actor class AxonService() = this {
     };
 
     // Snapshot the ledger at creation
-    //todo: Convert to map
-    let ballots = Map.fromIter<Principal, CurrentTypes.Ballot>(Iter.map<CurrentTypes.LedgerEntry, (Principal, CurrentTypes.Ballot)>(Map.entries<Principal, Nat>(axon.ledger), func((p: Principal,n : Nat)) {
+    // Get all voters that are not the treasury
+    let treasuryId = Principal.fromActor(axon.proxy);
+    
+    let eligibleVoters: [(Principal, Nat)] = Iter.toArray(
+      Iter.filter<(Principal,Nat)>(Map.entries(axon.ledger), 
+        func(p:Principal, idx: Nat): Bool{
+          p != treasuryId;
+        }
+      ));
+    
+    let ballots = Map.fromIter<Principal, CurrentTypes.Ballot>(Iter.map<CurrentTypes.LedgerEntry, (Principal, CurrentTypes.Ballot)>(eligibleVoters.vals(), func((p: Principal,n : Nat)) {
       (p, {
         var voted_by = null;
         principal = p;
@@ -634,7 +643,8 @@ shared ({ caller = creator }) actor class AxonService() = this {
         // Auto vote for caller
         var vote = if (p == caller) { ?(#Yes) } else { null };
       })
-    }),phash);
+    }), phash);
+
     let now = Time.now();
     let timeStart = clamp(
       Option.get(Option.map(request.timeStart, secsToNanos), now),
@@ -725,7 +735,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
         break search;
       };
 
-      //this recreates the ballots everytime...is expensive...refactor to variable data
+      
       let delegateSet = switch(Map.get<Principal,Set.Set<Principal>>(axon.delegations_by_delegate, phash, caller)){
         case(null){Set.new<Principal>()};
         case(?val){val};
