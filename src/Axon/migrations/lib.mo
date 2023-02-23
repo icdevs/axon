@@ -1,5 +1,5 @@
 import v_2_0_1 "./v002_000_001";
-import v_2_0_2 "./v002_000_002";
+import v_2_0_2 "./v002_001_001";
 import MigrationTypes "./types";
 import D "mo:base/Debug";
 
@@ -21,7 +21,7 @@ module {
     return switch (state) {
       case (#v0_0_0(_)) 0;
       case (#v2_0_1(_)) 1;
-      case (#v2_0_2(_)) 2;
+      case (#v2_1_1(_)) 2;
       // do not forget to add your new migration id here
       // should be increased by 1 as it will be later used as an index to get upgrade/downgrade methods
     };

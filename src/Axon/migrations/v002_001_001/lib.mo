@@ -1,6 +1,6 @@
 import MigrationTypes "../types";
 import v2_0_1_types = "../v002_000_001/types";
-import v2_0_2_types = "types";
+import v2_1_1_types = "types";
 
 import Map_lib "mo:map_7_0_0/Map"; 
 import Set_lib "mo:map_7_0_0/Set"; 
@@ -24,7 +24,7 @@ module {
 
     Debug.print("in upgrade to v2.0.2");
 
-    let axons = SB_lib.init<v2_0_2_types.AxonFull>();
+    let axons = SB_lib.init<v2_1_1_types.AxonFull>();
 
     let prev_state = switch(prev_migration_state){
       case(#v2_0_1(#data(val))) val;
@@ -34,10 +34,10 @@ module {
     for(thisItem in SB_lib.vals(prev_state.axons)){
       
 
-      let activeProposals = SB_lib.init<v2_0_2_types.AxonProposal>();
+      let activeProposals = SB_lib.init<v2_1_1_types.AxonProposal>();
 
       for(thisProposal in SB_lib.vals(thisItem.activeProposals)){
-        SB_lib.add<v2_0_2_types.AxonProposal>(activeProposals, {
+        SB_lib.add<v2_1_1_types.AxonProposal>(activeProposals, {
           thisProposal with
           proposal = switch(thisProposal.proposal){
             case(#AxonCommand(cmd)){
@@ -60,7 +60,7 @@ module {
             case(#CanisterCommand(cmd)) #CanisterCommand(cmd);
             case(#NeuronCommand(cmd)) #NeuronCommand(cmd);
           };
-          ballots = Map.fromIter<Principal, v2_0_2_types.Ballot>(Iter.map<v2_0_1_types.Ballot, (Principal, v2_0_2_types.Ballot)>(SB_lib.vals<v2_0_1_types.Ballot>(thisProposal.ballots), func(x){
+          ballots = Map.fromIter<Principal, v2_1_1_types.Ballot>(Iter.map<v2_0_1_types.Ballot, (Principal, v2_1_1_types.Ballot)>(SB_lib.vals<v2_0_1_types.Ballot>(thisProposal.ballots), func(x){
             (x.principal, {var voted_by = null;
             principal = x.principal;
             votingPower = x.votingPower;
@@ -71,10 +71,10 @@ module {
         });
       };
 
-      let allProposals = SB_lib.init<v2_0_2_types.AxonProposal>();
+      let allProposals = SB_lib.init<v2_1_1_types.AxonProposal>();
 
       for(thisProposal in SB_lib.vals(thisItem.allProposals)){
-        SB_lib.add<v2_0_2_types.AxonProposal>(allProposals,{
+        SB_lib.add<v2_1_1_types.AxonProposal>(allProposals,{
           thisProposal with
           proposal = switch(thisProposal.proposal){
             case(#AxonCommand(cmd)){
@@ -98,7 +98,7 @@ module {
             case(#NeuronCommand(cmd)) #NeuronCommand(cmd);
             
           };
-           ballots = Map.fromIter<Principal, v2_0_2_types.Ballot>(Iter.map<v2_0_1_types.Ballot, (Principal, v2_0_2_types.Ballot)>(SB_lib.vals<v2_0_1_types.Ballot>(thisProposal.ballots), func(x){
+           ballots = Map.fromIter<Principal, v2_1_1_types.Ballot>(Iter.map<v2_0_1_types.Ballot, (Principal, v2_1_1_types.Ballot)>(SB_lib.vals<v2_0_1_types.Ballot>(thisProposal.ballots), func(x){
             (x.principal, {var voted_by = null;
             principal = x.principal;
             votingPower = x.votingPower;
@@ -109,7 +109,7 @@ module {
         });
       };
 
-      SB_lib.add<v2_0_2_types.AxonFull>(axons, {
+      SB_lib.add<v2_1_1_types.AxonFull>(axons, {
         visibility = thisItem.visibility;
         totalStake = thisItem.totalStake;
         var supply = thisItem.supply;
@@ -127,7 +127,7 @@ module {
       });
     };
 
-    return #v2_0_2(#data(
+    return #v2_1_1(#data(
       {
         var axons = axons;
         var admins = prev_state.admins;

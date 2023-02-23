@@ -51,9 +51,9 @@ shared ({ caller = creator }) actor class AxonService() = this {
 
   // Do not forget to change #v0_1_0 when you are adding a new migration
   // If you use one previous state in place of #v0_1_0 it will run downgrade methods instead
-  migration_state := Migrations.migrate(migration_state, #v2_0_2(#id), {creator = creator; init_axons = axonEntries_post; init_admins= _AdminsUD});
+  migration_state := Migrations.migrate(migration_state, #v2_1_1(#id), {creator = creator; init_axons = axonEntries_post; init_admins= _AdminsUD});
 
-  let #v2_0_2(#data(state_current)) = migration_state;
+  let #v2_1_1(#data(state_current)) = migration_state;
 
   let _Admins = Admins.Admins(state_current, creator);
 
