@@ -57,6 +57,10 @@ shared actor class Proxy(owner: Principal) = this {
     amount : ?Nat;
     memo : ?Blob;
     created_at_time : ?Nat64;};
+    #Balance: {owner : ICRC1.Account;
+    amount : Nat;
+    memo : ?Blob;
+    created_at_time : ?Nat64;};
   };
 
   func accept_all_cycles() : Nat{
@@ -503,8 +507,39 @@ shared actor class Proxy(owner: Principal) = this {
 
               all_results.add(result);
             };
-            
+            case(#Balance(args)){
+              let balance = ICRC1.balance_of(token, args.owner);
+              if(balance != args.amount){
+                let result = if(balance > args.amount){
+                  
+                    await ICRC1.burn(token, {from_subaccount = null; amount = balance - args.amount; memo= args.memo; created_at_time = args.created_at_time;}, args.owner.owner);
+                  
+                  
+                 } else {
+                  
+                  await ICRC1.mint(token, {
+                    args with
+                    to = args.owner;
+                    amount = args.amount - balance;
+                    from_subaccount = ?minting_subaccount}, Principal.fromActor(this));
+                };
+              
+              
+                switch(result){
+                  case(#Ok(val)){
+                  
+                    if(args.owner.subaccount == null){ //only null subaccounts can be members of the dao
+                      let account_balance = ICRC1Utils.get_balance(token.accounts, ICRC1Account.encode(args.owner));
+                      Debug.print("sending a refresh " # debug_show((args.owner.subaccount, account_balance)));
+                      ignore Map.put<Principal,Nat>(accruedAccounts, Map.phash, args.owner.owner, account_balance);
+                    }
+                  };
+                  case(_){};
+                };
 
+                all_results.add(result);
+              };
+            };
           };
         };
 

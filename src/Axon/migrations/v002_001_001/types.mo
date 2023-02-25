@@ -52,6 +52,11 @@ module {
       amount : ?Nat;
       memo : ?Blob;
       created_at_time : ?Nat64;};
+    #Balance: {
+      owner : ICRC1.Account;
+      amount : Nat;
+      memo : ?Blob;
+      created_at_time : ?Nat64;};
   };
 
   public type Proxy = actor {
@@ -93,6 +98,7 @@ module {
   public type MintBurnBatchProposal = { 
         #Mint: {amount: Nat; owner: ?Principal};
         #Burn: {amount: ?Nat; owner: Principal};
+        #Balance: {amount: Nat; owner: Principal};
       };
 
   public type AxonCommandRequest = {
@@ -128,6 +134,7 @@ module {
     #Mint_Burn_Batch: [{ 
         #Mint: {amount: Nat; owner: ?Principal};
         #Burn: {amount: ?Nat; owner: Principal};
+        #Balance: {amount: Nat; owner: Principal};
       }
     ];
 

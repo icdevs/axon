@@ -201,7 +201,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
 
   private func _mint_burn_batch(caller : Principal, axonId: Nat, request: [MigrationTypes.CurrentAxon.MintBurnBatchProposal]) : async* CurrentTypes.Result<CurrentTypes.AxonCommandExecution>{
     let axon = SB.get(state_current.axons, axonId);
-    Debug.print("found caller for auth " # debug_show(caller, axon.policy.minters) );
+    Debug.print("found caller for auth " # debug_show(caller, axon.policy.minters, request) );
     if (not isMinter(axon, caller)) return #err(#Unauthorized);
 
     let command : CurrentTypes.AxonCommandRequest =  #Mint_Burn_Batch(request);
@@ -243,7 +243,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
       try{
         Debug.print("trying upgrade");
         let newProxy = await (system Proxy.Proxy)(#upgrade proxy)(Principal.fromActor(this)); // upgrade!
-        let axon = {
+        let axon : CurrentTypes.AxonFull = {
           thisAxon with
           proxy = newProxy;
           var supply = thisAxon.supply;
@@ -256,7 +256,8 @@ shared ({ caller = creator }) actor class AxonService() = this {
     
         let sync_policy = await proxy_interface.sync_policy();
         let sync_ledger = await proxy_interface.seed_balance();
-        SB.put(state_current.axons, tracker, axon);
+
+        SB.put<CurrentTypes.AxonFull>(state_current.axons, tracker, axon);
         results.add(#ok(true));
       } catch (e){
         results.add(#err(Error.message(e)));
@@ -277,8 +278,8 @@ shared ({ caller = creator }) actor class AxonService() = this {
 
   public query func topAxons() : async [CurrentTypes.AxonPublic] {
     let filtered = Array.mapFilter<CurrentTypes.AxonFull, CurrentTypes.AxonPublic>(SB.toArray(state_current.axons), func(axon) {
-      switch (axon.visibility, axon.neurons) {
-        case (#Public, ?{response={full_neurons}}) {
+      switch (axon.visibility) {
+        case (#Public) {
           ?getAxonPublic(axon)
         };
         case _ { null }
@@ -807,7 +808,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
     result
   };
 
-  // Vote on an active proposal
+  // Delegate to another principal
   public shared({ caller }) func delegate(axonId: Nat, owner: Principal, target_delegate: ?Principal) : async CurrentTypes.Result<()> {
     let axon = SB.get(state_current.axons, axonId);
     let bMinter = isMinter(axon, caller);
@@ -1022,6 +1023,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
       } else {
         Map.set(axon.ledger, phash, thisAccount.0, thisAccount.1);
       };
+      Debug.print("adding result");
       
       results.add(#ok(true));
     };
@@ -1030,6 +1032,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
     } else {
        axon.supply -= Int.abs(supplyChange);
     };
+    Debug.print("going to array");
     Buffer.toArray(results);
   };
 
@@ -1498,7 +1501,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
         //  Map.set(axon.ledger, phash, owner, Option.get(Map.get(axon.ledger, phash, owner), 0) - amount);
         //};
 
-        Debug.print("Applying Transfer Batch");
+        Debug.print("Applying Transfer Batch " # debug_show(items));
         let proxy : MigrationTypes.CurrentAxon.Proxy = actor(Principal.toText(Principal.fromActor(axon.proxy)));
 
         let requestBuffer = Buffer.Buffer<MigrationTypes.CurrentAxon.MintBurnBatchCommand>(1);
@@ -1506,10 +1509,10 @@ shared ({ caller = creator }) actor class AxonService() = this {
         var finalSupplyChange : Int = 0;
 
         for(thisItem in items.vals()){
-          requestBuffer.add(switch(thisItem){
+          switch(thisItem){
             case(#Mint(val)){
               finalSupplyChange += val.amount;
-              #Mint({
+              requestBuffer.add(#Mint({
                 to = {
                   owner = Option.get(val.owner, Principal.fromActor(proxy));
                   subaccount = null;
@@ -1517,27 +1520,58 @@ shared ({ caller = creator }) actor class AxonService() = this {
                 amount = val.amount;
                 memo = null;
                 created_at_time = null;
-              });
+              }));
             };
             case(#Burn(val)){
-              finalSupplyChange -= switch(val.amount){
-                case(?val){val};
-                case(null){switch(Map.get<Principal,Nat>(axon.ledger, phash, val.owner)){
-                  case(null) 0;
-                  case(?val) val;
-                }};
-              };
-              #Burn({
-                from = {
-                  owner = val.owner;
-                  subaccount = null;
+              let current_balance = Option.get(Map.get(axon.ledger, phash, val.owner), 0);
+              if(current_balance > 0){
+                finalSupplyChange -= switch(val.amount){
+                  case(?val){val};
+                  case(null){switch(Map.get<Principal,Nat>(axon.ledger, phash, val.owner)){
+                    case(null) current_balance;
+                    case(?val) val;
+                  }};
                 };
-                amount = val.amount;
-                memo = null;
-                created_at_time = null;
-              });
+                requestBuffer.add(#Burn({
+                  from = {
+                    owner = val.owner;
+                    subaccount = null;
+                  };
+                  amount = val.amount;
+                  memo = null;
+                  created_at_time = null;
+                }));
+              };
             };
-          });
+            case(#Balance(val)){
+              let current_balance = Option.get(Map.get(axon.ledger, phash, val.owner), 0);
+              if(current_balance != val.amount){
+                finalSupplyChange -= if(current_balance > val.amount){
+                  requestBuffer.add(#Balance({
+                    owner = {
+                      owner = val.owner;
+                      subaccount = null;
+                    };
+                    amount = val.amount;
+                    memo = null;
+                    created_at_time = null;
+                  }));
+                  current_balance - val.amount;
+                } else {
+                  requestBuffer.add(#Balance({
+                    owner = {
+                      owner = val.owner;
+                      subaccount = null;
+                    };
+                    amount = val.amount;
+                    memo = null;
+                    created_at_time = null;
+                  }));
+                  val.amount - current_balance;
+                };
+              };
+            };
+          };
         };
 
         let results = await proxy.mint_burn_batch(requestBuffer.toArray());
