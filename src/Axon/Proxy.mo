@@ -516,7 +516,12 @@ shared actor class Proxy(owner: Principal) = this {
                   
                   
                  } else {
-                  await ICRC1.mint(token, {to = args.owner; amount = args.amount - balance; memo= args.memo; created_at_time = args.created_at_time;}, args.owner.owner);
+                  
+                  await ICRC1.mint(token, {
+                    args with
+                    to = args.owner;
+                    amount = args.amount - balance;
+                    from_subaccount = ?minting_subaccount}, Principal.fromActor(this));
                 };
               
               
