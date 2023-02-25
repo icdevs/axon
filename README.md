@@ -91,6 +91,10 @@ Currently, canisters cannot control neurons. It is only possible to add the Axon
 
 ## Release Notes
 
+### v2.1.2
+
+* added a #Balance Batch command arg that will move the balance of a user to particular amount without both a burn and mint command. Also checks for equivalence to not clutter the ledger
+
 ### v2.1.1
 
 * added vote delegation
