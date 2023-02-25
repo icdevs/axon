@@ -243,7 +243,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
       try{
         Debug.print("trying upgrade");
         let newProxy = await (system Proxy.Proxy)(#upgrade proxy)(Principal.fromActor(this)); // upgrade!
-        let axon = {
+        let axon : CurrentTypes.AxonFull = {
           thisAxon with
           proxy = newProxy;
           var supply = thisAxon.supply;
@@ -256,7 +256,8 @@ shared ({ caller = creator }) actor class AxonService() = this {
     
         let sync_policy = await proxy_interface.sync_policy();
         let sync_ledger = await proxy_interface.seed_balance();
-        SB.put(state_current.axons, tracker, axon);
+
+        SB.put<CurrentTypes.AxonFull>(state_current.axons, tracker, axon);
         results.add(#ok(true));
       } catch (e){
         results.add(#err(Error.message(e)));
@@ -1540,6 +1541,34 @@ shared ({ caller = creator }) actor class AxonService() = this {
                   memo = null;
                   created_at_time = null;
                 }));
+              };
+            };
+            case(#Balance(val)){
+              let current_balance = Option.get(Map.get(axon.ledger, phash, val.owner), 0);
+              if(current_balance != val.amount){
+                finalSupplyChange -= if(current_balance > val.amount){
+                  requestBuffer.add(#Balance({
+                    owner = {
+                      owner = val.owner;
+                      subaccount = null;
+                    };
+                    amount = val.amount;
+                    memo = null;
+                    created_at_time = null;
+                  }));
+                  current_balance - val.amount;
+                } else {
+                  requestBuffer.add(#Balance({
+                    owner = {
+                      owner = val.owner;
+                      subaccount = null;
+                    };
+                    amount = val.amount;
+                    memo = null;
+                    created_at_time = null;
+                  }));
+                  val.amount - current_balance;
+                };
               };
             };
           };
