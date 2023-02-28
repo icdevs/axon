@@ -1094,6 +1094,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
 
   // Execute accepted proposal
   func _doExecute(axonId: Nat, proposal: CurrentTypes.AxonProposal) : async CurrentTypes.AxonProposalPublic {
+    Debug.print("in do execute");
     switch (A.currentStatus(proposal.status)) {
       case (#ExecutionQueued(_)) {};
       // Trap if status is not ExecutionQueued
@@ -1115,7 +1116,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
     });
 
     var maybeNewAxon: ?CurrentTypes.AxonFull = null;
-    switch (startedProposal.proposal) {
+    let proposal_type : CurrentTypes.ProposalType = switch (startedProposal.proposal) {
       case (#NeuronCommand((command,_))) {
         // Forward command to specified neurons, or all
         let neuronIds = neuronIdsFromInfos(axon.id);
@@ -1141,17 +1142,20 @@ shared ({ caller = creator }) actor class AxonService() = this {
           };
           proposalResponses.add((id, Buffer.toArray(neuronResponses)));
         };
-        //#NeuronCommand((command, ?Buffer.toArray(proposalResponses)))
+        #NeuronCommand((command, ?Buffer.toArray(proposalResponses)))
       };
       case (#AxonCommand((command,_))) {
         let response = await* _applyAxonCommand(axon, command);
         switch (response) {
-          case (#ok((newAxon,_))) {
+          case (#ok((newAxon, execution))) {
             maybeNewAxon := ?SB.get(state_current.axons, newAxon);
+            #AxonCommand((command, ?#ok(execution)));
           };
-          case _ {}
+          case (#err(err)){
+            #AxonCommand((command, null));
+          };
         };
-        //#AxonCommand((command, ?Result.mapOk<(CurrentTypes.AxonFull, CurrentTypes.AxonCommandExecution), CurrentTypes.AxonCommandExecution, CurrentTypes.Error>(maybeNewAxon, func(t) { t.1 })))
+        
       };
       case (#CanisterCommand((command,_))) {
         Debug.print("calling command");
@@ -1166,7 +1170,7 @@ shared ({ caller = creator }) actor class AxonService() = this {
           };
         } catch (e){
           Debug.print("calling try error" # Error.message(e));
-          //#CanisterCommand((command, ?#error(Error.message(e))))
+          #CanisterCommand((command, ?#error(Error.message(e))))
         };
         
       }
@@ -1176,17 +1180,40 @@ shared ({ caller = creator }) actor class AxonService() = this {
 
     // Save responses and set status to ExecutionFinished
     SB.add(startedProposal.status, #ExecutionFinished(Time.now()));
+    switch(proposal_type){
+      case(#CanisterCommand(x)){
+        Debug.print("inspecting" # debug_show(x));
+      };
+      case(_){
+
+        Debug.print("not a canister command" );
+      };
+    };
+    Debug.print("adding to all propsals");
+
+    SB.add(newAxon.allProposals, {
+      startedProposal with
+        proposal  = proposal_type
+        }
+      
+    );
+
+    Debug.print("done" # debug_show(newAxon.allProposals));
+
     
-    SB.add(newAxon.allProposals, startedProposal);
     // Move executed proposal from active to all
     SB.put(state_current.axons, newAxon.id, {
       newAxon with 
+      allProposals = newAxon.allProposals;
       activeProposals = SB.fromArray<CurrentTypes.AxonProposal>(Array.filter<CurrentTypes.AxonProposal>(SB.toArray(newAxon.activeProposals), func(p) { p.id != startedProposal.id }));
       var supply = newAxon.supply;
       var lastProposalId = newAxon.lastProposalId;
     });
 
+    Debug.print("should have put new axon" );
+
     {startedProposal with 
+      proposal_type = proposal_type;
       ballots = Iter.toArray(Iter.map<CurrentTypes.Ballot, CurrentTypes.BallotPublic>(Map.vals<Principal, CurrentTypes.Ballot>(startedProposal.ballots), func(x){
             {
               votingPower = x.votingPower;

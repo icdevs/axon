@@ -349,7 +349,7 @@ shared actor class Proxy(owner: Principal) = this {
           return #Err(#GenericError({ error_code = 1; message = "This token does not allow transfers" }));
         };
 
-        let result = await ICRC1.transfer(token, args, caller);
+        let result = await* ICRC1.transfer(token, args, caller);
 
         let requests = Buffer.Buffer<(Principal, Nat)>(2);
 
@@ -385,7 +385,7 @@ shared actor class Proxy(owner: Principal) = this {
     public shared ({ caller }) func mint(args : ICRC1.Mint) : async ICRC1.TransferResult {
         Debug.print("in mint in proxy " # debug_show((caller, axon)));
         assert(caller == axon);
-        let result = await ICRC1.mint(token, {
+        let result = await* ICRC1.mint(token, {
           args with
           from_subaccount = ?minting_subaccount}, Principal.fromActor(this));
 
@@ -421,7 +421,7 @@ shared actor class Proxy(owner: Principal) = this {
         if(allow_burn == false){
           return #Err(#GenericError({ error_code = 2; message = "This token does not allow burn" }));
         };
-        let result = await ICRC1.burn(token, {from_subaccount = null; amount = switch(args.amount){
+        let result = await* ICRC1.burn(token, {from_subaccount = null; amount = switch(args.amount){
           case(null) {ICRC1.balance_of(token, args.from);};
           case(?val) val;
         }; memo= args.memo; created_at_time = args.created_at_time;}, args.from.owner);
@@ -468,7 +468,7 @@ shared actor class Proxy(owner: Principal) = this {
         for(thisItem in args.vals()){
           switch(thisItem){
             case(#Mint(args)){
-              let result = await ICRC1.mint(token, {
+              let result = await* ICRC1.mint(token, {
                 args with
                 from_subaccount = ?minting_subaccount}, Principal.fromActor(this));
 
@@ -489,7 +489,7 @@ shared actor class Proxy(owner: Principal) = this {
               all_results.add(result);
             };
             case(#Burn(args)){
-              let result = await ICRC1.burn(token, {from_subaccount = null; amount = switch(args.amount){
+              let result = await* ICRC1.burn(token, {from_subaccount = null; amount = switch(args.amount){
                 case(null) {ICRC1.balance_of(token, args.from);};
                 case(?val) val;
               }; memo= args.memo; created_at_time = args.created_at_time;}, args.from.owner);
@@ -512,12 +512,12 @@ shared actor class Proxy(owner: Principal) = this {
               if(balance != args.amount){
                 let result = if(balance > args.amount){
                   
-                    await ICRC1.burn(token, {from_subaccount = null; amount = balance - args.amount; memo= args.memo; created_at_time = args.created_at_time;}, args.owner.owner);
+                    await* ICRC1.burn(token, {from_subaccount = null; amount = balance - args.amount; memo= args.memo; created_at_time = args.created_at_time;}, args.owner.owner);
                   
                   
                  } else {
                   
-                  await ICRC1.mint(token, {
+                  await* ICRC1.mint(token, {
                     args with
                     to = args.owner;
                     amount = args.amount - balance;
@@ -561,7 +561,7 @@ shared actor class Proxy(owner: Principal) = this {
 
     // Additional functions not included in the ICRC1 standard
     public shared func get_transaction(i : ICRC1.TxIndex) : async ?ICRC1.Transaction {
-        await ICRC1.get_transaction(token, i);
+        await* ICRC1.get_transaction(token, i);
     };
 
     // Deposit cycles into this canister.
@@ -641,7 +641,7 @@ shared actor class Proxy(owner: Principal) = this {
         let thisLedger = await axon_service.ledger(axonId);
 
         for(thisItem in thisLedger.vals()){
-          let result = await ICRC1.mint(token, {
+          let result = await* ICRC1.mint(token, {
               from_subaccount = ?minting_subaccount;
               to = {owner = thisItem.0; subaccount = null};
               amount = thisItem.1;

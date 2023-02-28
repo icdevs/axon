@@ -6,7 +6,9 @@ const AXON_CANISTER_ID =
     : process.env.NEXT_PUBLIC_DFX_NETWORK === "staging"
     ? CanisterIds.staging.ic
     : process.env.NEXT_PUBLIC_DFX_NETWORK === "testic"
-    ? CanisterIds.AxonTest.ic 
+    ? CanisterIds.staging.ic
+    : process.env.NEXT_PUBLIC_DFX_NETWORK === "voic_ic"
+    ? CanisterIds.voic.ic 
     : process.env.NEXT_PUBLIC_DFX_NETWORK === "voice"
     ? require("../../../../../.dfx/local/canister_ids.json").axon.local
     : CanisterIds.Axon.ic

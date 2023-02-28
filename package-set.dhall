@@ -28,8 +28,8 @@ let
   , dependencies = [ "base"]
   },
   { name = "icrc1"
-  , repo = "https://github.com/NatLabs/icrc1"
-  , version = "7af28bbfa7d41a20297ff6e349ee0374f9d1b576"
+  , repo = "https://github.com/skilesare/icrc1"
+  , version = "b0454d6f0022f3cc4c8ee2eb07cca3bbbee5e4c1"
   , dependencies = [ "base"]
   },
   {

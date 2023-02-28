@@ -5,7 +5,7 @@ export default function Footer() {
   return (
     <footer className="py-8 flex items-center justify-center gap-4 transition-opacity">
       <a
-        href="https://icscan.io/canister/vq3jg-tiaaa-aaaao-ag2uq-cai"
+        href="https://icscan.io/canister/zo74t-vaaaa-aaaan-qc53a-cai"
         className="opacity-50 hover:opacity-100"
         target="_blank"
         rel="noopener noreferrer"
