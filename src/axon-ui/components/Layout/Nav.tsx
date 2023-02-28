@@ -6,6 +6,7 @@ import { formatNumber } from "../../lib/utils";
 import IdentifierLabelWithButtons from "../Buttons/IdentifierLabelWithButtons";
 import LoginButton from "../Buttons/LoginButton";
 import { useGlobalContext } from "../Store/Store";
+import { Connect2ICButton } from "../Buttons/Connect2ICButton";
 
 export default function Nav() {
   const {
@@ -38,7 +39,11 @@ export default function Nav() {
             )}
           </div>
         )}
-        <LoginButton />
+        {
+          global.window && 
+            <Connect2ICButton />
+        }
+        {/* <LoginButton /> */}
       </div>
     </nav>
   );
