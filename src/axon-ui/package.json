@@ -21,10 +21,13 @@
     "copy:types": "rsync -avr ../../.dfx/$(echo ${DFX_NETWORK:-'**'})/canisters/Axon --exclude='assets/' --exclude='idl/' --exclude='*.wasm' --exclude='index.js' --delete declarations"
   },
   "dependencies": {
+    "@connect2ic/core": "^0.2.0-beta.5",
+    "@connect2ic/react": "^0.2.0-beta.5",
     "@dfinity/agent": "0.9.3",
     "@dfinity/auth-client": "^0.9.3",
     "@dfinity/authentication": "^0.9.3",
     "@dfinity/candid": "0.9.3",
+    "@dfinity/identity": "^0.15.4",
     "@dfinity/principal": "0.9.3",
     "@dfinity/utils": "^0.0.5",
     "@headlessui/react": "^1.7.4",
