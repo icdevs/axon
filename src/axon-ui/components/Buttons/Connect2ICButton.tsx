@@ -56,6 +56,6 @@ export const Connect2ICButton: React.FC = (props) => {
 			<ConnectButton />
 			<ConnectDialog />
 		</>
-		: null
+		: <></>
   )
 }
