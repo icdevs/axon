@@ -95,7 +95,7 @@ Currently, canisters cannot control neurons. It is only possible to add the Axon
 
 ### `is_admin(p: Principal): async Bool`
 
-Checks if the specified principal is an admin.
+Checks if the specified principal is an admin on the axon head canister.
 
 #### Parameters
 
@@ -143,11 +143,11 @@ Retrieves the public information of an axon by ID.
 
 ### `axonByWallet(id: Principal): async ?AxonPublic`
 
-Retrieves the public information of an axon by wallet address.
+Retrieves the public information of an axon by wallet address.  You can use this if you know your Axon Proxy and want to find the axon id that controls that proxy.
 
 #### Parameters
 
-- `id` (type: `Principal`): The wallet address of the axon.
+- `id` (type: `Principal`): The wallet principal of the axon.
 
 #### Returns
 
@@ -179,7 +179,7 @@ Retrieves the neuron IDs associated with an axon.
 
 ### `balanceOf(id: Nat, principal: ?Principal): async Nat`
 
-Retrieves the balance of a given axon for a specific principal or caller.
+Retrieves the balance for a principal on a given axon for a specific principal or caller.
 
 #### Parameters
 
@@ -188,7 +188,7 @@ Retrieves the balance of a given axon for a specific principal or caller.
 
 #### Returns
 
-- (type: `async Nat`): The balance of the axon for the specified principal or caller.
+- (type: `async Nat`): The balance of the axon for the specified principal or caller.  This is the snap shot blance.  "Source of truth" balances should be checked on the axon proxy using icrc1_balance_of
 
 ### `ledger(id: Nat): async Array<LedgerEntry>`
 
@@ -200,7 +200,7 @@ Retrieves the ledger entries of an axon by ID.
 
 #### Returns
 
-- (type: `async Array<LedgerEntry>`): An array of ledger entries sorted in descending order by balance.
+- (type: `async Array<LedgerEntry>`): An array of ledger entries sorted in descending order by balance.  This is a shapshot of the holders of the Axon token. It should not be used as a source of truth.
 
 ### `myAxons(): async Array<AxonPublic>`
 
@@ -315,9 +315,9 @@ Removes the specified principal as an admin.
 
 - `p` (type: `Principal`): The principal to remove as an admin.
 
-### `_mint(caller: Principal, axonId: Nat, p: Principal, a: Nat): async* Result<AxonCommandExecution>`
+### `private _mint(caller: Principal, axonId: Nat, p: Principal, a: Nat): async* Result<AxonCommandExecution>`
 
-Mints a specified amount of tokens for a recipient.
+Mints a specified amount of tokens for a recipient. Creates the equivalent of an mint proposal and executes it.  You must have a minting privileges. A message will be sent to the proxy wallet to actually mint the tokens and then the proxy will update the balance on the Axon head.
 
 #### Parameters
 
@@ -333,7 +333,7 @@ Mints a specified amount of tokens for a recipient.
 
 ### `mint(axonId: Nat, p: Principal, a: Nat): async Result<AxonCommandExecution>`
 
-Mints a specified amount of tokens for a recipient.
+Mints a specified amount of tokens for a recipient.  Must be the minting canister or principal
 
 #### Parameters
 
@@ -359,7 +359,7 @@ Mints a batch of tokens for multiple recipients.
 
 ### `burn(axonId: Nat, p: Principal, a: Nat): async Result<AxonCommandExecution>`
 
-Burns a specified amount of tokens owned by a recipient.
+Burns a specified amount of tokens owned by a recipient. Burns must be allowed.  A message will be sent to the proxy to burn the tokens. Balance will be updated by the proxy wallet if the burn is allowed.
 
 #### Parameters
 
@@ -385,13 +385,11 @@ Burns a batch of tokens owned by multiple recipients.
 
 ### `upgradeProxy(): async Array<Result<Bool, Text>>`
 
-Upgrades a proxy to the new actor type.
+Upgrades a proxy to the new actor type.  This should be called once for each upgrade to upgrade all the proxy canisters one by one to the new actor.
 
 #### Returns
 
 - (type: `async Array<Result<Bool, Text>>`): An array of results indicating the success or failure of the upgrade process for each axon.
-
-
 
 ### `wallet_receive(): async Nat`
 
@@ -504,7 +502,7 @@ Calls `list_neurons()` and saves the list of neurons controlled by the axon's pr
 
 ### `refreshBalances(axonId: Nat, accounts: Array<{account: Principal, balance: Nat}>): async [Result<Bool>]`
 
-Refreshes the balances of the specified accounts in the axon's ledger.
+Refreshes the balances of the specified accounts in the axon's ledger.  This can only be called by the proxy wallet and is used to keep the axon head in sync with the proxy.
 
 #### Parameters
 
@@ -529,7 +527,7 @@ Updates the proposal statuses and moves them from active to all if needed. Calle
 
 - (type: `async Result<()>`): The result of the cleanup operation.
 
-### `_doExecute(axonId: Nat, proposal: AxonProposal): async AxonProposalPublic`
+### `private _doExecute(axonId: Nat, proposal: AxonProposal): async AxonProposalPublic`
 
 Executes an accepted proposal.
 
@@ -575,9 +573,7 @@ Creates an error object from an error.
 
 # Documentation for Proxy.mo (The wallet canister)
 
-The Proxy wallet contract is responsible for managing an ICRC1 token implementation and providing various functionalities for interacting with the token.
-
-
+The Proxy wallet contract is responsible for managing an ICRC1 token implementation and providing various functionalities for interacting with the token.  If also allows the users to make requests for call_raw calls so that the Axon Proxy Wallet can call other services.
 
 ### Public Functions
 
@@ -618,37 +614,35 @@ Calls a canister function with raw parameters.
 
 - **`mint(args : ICRC1.Mint) : async ICRC1.TransferResult`**: Mints new ICRC1 tokens in the Proxy wallet contract.
 - **`burn(args : ICRC1.Burn) : async ICRC1.TransferResult`**: Burns  ICRC1 tokens in the Proxy wallet contract.
-- **get_transactions(req: ICRC1.GetTransactionsRequest): async ICRC1.GetTransactionsResponse**
+- **`get_transactions(req: ICRC1.GetTransactionsRequest): async ICRC1.GetTransactionsResponse`**
 
   Retrieves transactions of the ICRC1 token in the Proxy wallet contract.
 
-- **get_transaction(i: ICRC1.TxIndex): async ?ICRC1.Transaction**
+- **`get_transaction(i: ICRC1.TxIndex): async ?ICRC1.Transaction`**
 
   Retrieves a transaction of the ICRC1 token in the Proxy wallet contract.
 
-- **deposit_cycles(): async**
+- **`deposit_cycles(): async`**
 
   Deposits cycles into the Proxy wallet contract.
 
-- **sync_policy():
-
- async Result.Result<Bool, Text>**
+- **`sync_policy(): async Result.Result<Bool, Text>`**
 
   Synchronizes the policies from the axon.
 
-- **seed_balance(): async Result.Result<Bool, Text>**
+- **`seed_balance(): async Result.Result<Bool, Text>`**
 
   Seeds the balance from the axon but only once.
 
-- **redenominate(from: Nat, to: Nat): async Result.Result<Bool, Text>**
+- **`redenominate(from: Nat, to: Nat): async Result.Result<Bool, Text>`**
 
   Redenominates the token balance.
 
-- **update_token(request: Object): async Result.Result<Bool, Text>**
+- **`update_token(request: Object): async Result.Result<Bool, Text>`**
 
   Updates the token information.
 
-- **force_refresh_balance(request: Array<Principal>): async Result.Result<Bool, Text>**
+- **`force_refresh_balance(request: Array<Principal>): async Result.Result<Bool, Text`>**
 
   Forces a refresh of balance for specified accounts.
 
