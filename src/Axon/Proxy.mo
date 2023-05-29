@@ -67,6 +67,10 @@ shared actor class Proxy(owner: Principal) = this {
   
 
   // get metrics
+  /**
+  * Retrieves the metrics of the Proxy wallet contract.
+  * @returns {async} {{axon: Principal, archive: Principal}} - The axon and archive principals.
+  */
   public query func metrics() : async {
     axon: Principal;
     archive: Principal;
@@ -77,6 +81,12 @@ shared actor class Proxy(owner: Principal) = this {
     };
   };
 
+  /**
+ * Recycles cycles from the Proxy wallet contract.
+ * @param {Principal} caller - The caller's principal.
+ * @param {Nat} floor - The minimum balance required to recycle cycles.
+ * @returns {async} {Nat} - The amount of recycled cycles.
+ */
   public func recycle_cycles(caller: Principal, floor: Nat): async Nat {
       assert(caller == axon);
       let balance: Nat = Cycles.balance();
@@ -90,6 +100,11 @@ shared actor class Proxy(owner: Principal) = this {
   };
 
   // Call list_neurons() and save the list of neurons that this canister controls
+  /**
+ * Calls the list_neurons() function and saves the list of neurons that this canister controls.
+ * @param {Principal} caller - The caller's principal.
+ * @returns {async} {ListNeuronsResponse} - The response containing the list of neurons.
+ */
   public shared({ caller }) func list_neurons() : async GT.ListNeuronsResponse {
     assert(caller == axon);
 
@@ -99,6 +114,12 @@ shared actor class Proxy(owner: Principal) = this {
     });
   };
 
+  /**
+ * Manages a neuron by calling the manage_neuron() function.
+ * @param {ManageNeuron} args - The arguments for managing the neuron.
+ * @param {Principal} caller - The caller's principal.
+ * @returns {async} {ManageNeuronResponse} - The response from managing the neuron.
+ */
   public shared({ caller }) func manage_neuron(args: GT.ManageNeuron) : async GT.ManageNeuronResponse {
     assert(caller == axon);
     await Governance.manage_neuron(args)
@@ -106,6 +127,15 @@ shared actor class Proxy(owner: Principal) = this {
 
 
 
+  /**
+  * Calls a canister function with raw parameters.
+  * @param {Principal} canister - The principal of the canister.
+  * @param {Text} functionName - The name of the function to call.
+  * @param {Blob} argumentBinary - The binary representation of the argument.
+  * @param {Nat} cycles - The amount of cycles to include in the call.
+  * @param {Principal} caller - The caller's principal.
+  * @returns {async} {Result.Result<Blob, Text>} - The result of the call.
+  */
   public shared({ caller }) func call_raw(canister: Principal, functionName: Text, argumentBinary: Blob, cycles: Nat) : async Result.Result<Blob, Text> {
     Debug.print(debug_show(axon) # " " # debug_show(caller) # " " # debug_show(owner));
     assert(caller == owner);
@@ -170,42 +200,88 @@ shared actor class Proxy(owner: Principal) = this {
     stable var token = ICRC1.init(icrc1_args);
 
     /// Functions for the ICRC1 token standard
+    /**
+    * Initializes an ICRC1 token in the Proxy wallet contract.
+    * @returns {async} {Text} - The name of the ICRC1 token.
+    */
+
     public shared query func icrc1_name() : async Text {
         ICRC1.name(token);
     };
 
+    /**
+    * Retrieves the symbol of the ICRC1 token in the Proxy wallet contract.
+    * @returns {async} {Text} - The symbol of the ICRC1 token.
+    */
     public shared query func icrc1_symbol() : async Text {
         ICRC1.symbol(token);
     };
 
+    /**
+    * Retrieves the decimals of the ICRC1 token in the Proxy wallet contract.
+    * @returns {async} {Nat8} - The decimals of the ICRC1 token.
+    */
     public shared query func icrc1_decimals() : async Nat8 {
         ICRC1.decimals(token);
     };
+
+    /**
+    * Retrieves the fee of the ICRC1 token in the Proxy wallet contract.
+    * @returns {async} {ICRC1.Balance} - The fee of the ICRC1 token.
+    */
 
     public shared query func icrc1_fee() : async ICRC1.Balance {
         ICRC1.fee(token);
     };
 
+    /**
+    * Retrieves the metadata of the ICRC1 token in the Proxy wallet contract.
+    * @returns {async} {[ICRC1.MetaDatum]} - The metadata of the ICRC1 token.
+    */
     public shared query func icrc1_metadata() : async [ICRC1.MetaDatum] {
         ICRC1.metadata(token);
     };
 
+    /**
+    * Retrieves the total supply of the ICRC1 token in the Proxy wallet contract.
+    * @returns {async} {ICRC1.Balance} - The total supply of the ICRC1 token.
+    */
     public shared query func icrc1_total_supply() : async ICRC1.Balance {
         ICRC1.total_supply(token);
     };
 
+    /**
+    * Retrieves the minting account of the ICRC1 token in the Proxy wallet contract.
+    * @returns {async} {?ICRC1.Account} - The minting account of the ICRC1 token.
+    */
     public shared query func icrc1_minting_account() : async ?ICRC1.Account {
         ?ICRC1.minting_account(token);
     };
 
+
+    /**
+    * Retrieves the balance of an ICRC1 account in the Proxy wallet contract.
+    * @param {ICRC1.Account} args - The ICRC1 account.
+    * @returns {async} {ICRC1.Balance} - The balance of the ICRC1 account.
+    */
     public shared query func icrc1_balance_of(args : ICRC1.Account) : async ICRC1.Balance {
         ICRC1.balance_of(token, args);
     };
 
+    /**
+    * Retrieves the supported standards of the ICRC1 token in the Proxy wallet contract.
+    * @returns {async} {[ICRC1.SupportedStandard]} - The supported standards of the ICRC1 token.
+    */
     public shared query func icrc1_supported_standards() : async [ICRC1.SupportedStandard] {
         ICRC1.supported_standards(token);
     };
 
+    /**
+    * Transfers ICRC1 tokens in the Proxy wallet contract.
+    * @param {ICRC1.TransferArgs} args - The transfer arguments.
+    * @param {Principal} caller - The caller's principal.
+    * @returns {async} {ICRC1.TransferResult} - The result of the transfer.
+    */
     public shared ({ caller }) func icrc1_transfer(args : ICRC1.TransferArgs) : async ICRC1.TransferResult {
         if(no_transfer == true){
           return #Err(#GenericError({ error_code = 1; message = "This token does not allow transfers" }));
@@ -244,6 +320,12 @@ shared actor class Proxy(owner: Principal) = this {
         return result;
     };
 
+    /**
+    * Mints new ICRC1 tokens in the Proxy wallet contract.
+    * @param {ICRC1.Mint} args - The mint arguments.
+    * @param {Principal} caller - The caller's principal.
+    * @returns {async} {ICRC1.TransferResult} - The result of the minting.
+    */
     public shared ({ caller }) func mint(args : ICRC1.Mint) : async ICRC1.TransferResult {
         Debug.print("in mint in proxy " # debug_show((caller, axon)));
         assert(caller == axon);
@@ -275,6 +357,12 @@ shared actor class Proxy(owner: Principal) = this {
         return result;
     };
 
+    /**
+    * Burns ICRC1 tokens in the Proxy wallet contract.
+    * @param {ICRC1.Burn} args - The burn arguments.
+    * @param {Principal} caller - The caller's principal.
+    * @returns {async} {ICRC1.TransferResult} - The result of the burn.
+    */
     public shared ({ caller }) func burn(args : {from : ICRC1.Account;
       amount : Nat;
       memo : ?Blob;
@@ -309,6 +397,11 @@ shared actor class Proxy(owner: Principal) = this {
     };
 
     // Functions for integration with the rosetta standard
+    /**
+    * Retrieves transactions of the ICRC1 token in the Proxy wallet contract.
+    * @param {ICRC1.GetTransactionsRequest} req - The transaction request.
+    * @returns {async} {ICRC1.GetTransactionsResponse} - The response containing the transactions.
+    */
     public shared query func get_transactions(req : ICRC1.GetTransactionsRequest) : async ICRC1.GetTransactionsResponse {
         ICRC1.get_transactions(token, req);
     };
@@ -319,6 +412,10 @@ shared actor class Proxy(owner: Principal) = this {
     };
 
     // Deposit cycles into this canister.
+    /**
+    * Deposits cycles into the Proxy wallet contract.
+    * @returns {async} - Empty response.
+    */
     public shared func deposit_cycles() : async () {
         let amount = Cycles.available();
         let accepted = Cycles.accept(amount);
@@ -337,6 +434,10 @@ shared actor class Proxy(owner: Principal) = this {
 
 
     //syncs the polices from the axon
+    /**
+    * Synchronizes the policies from the axon.
+    * @returns {async} {Result.Result<Bool,Text>} - The result of policy synchronization.
+    */
     public shared({caller}) func sync_policy() : async Result.Result<Bool,Text>{
       Debug.print("sync policy" # debug_show(axonId));
       assert(caller == axon);
@@ -382,9 +483,14 @@ shared actor class Proxy(owner: Principal) = this {
     };
 
 
-    //syncs the ledger from the axon but only once
+    
     stable var is_seeded = false;
 
+    //syncs the ledger from the axon but only once
+    /**
+    * Seeds the balance from the axon but only once.
+    * @returns {async} {Result.Result<Bool,Text>} - The result of balance seeding.
+    */
     public shared({caller}) func seed_balance() : async Result.Result<Bool,Text>{
       Debug.print("seed balance" # debug_show(axonId));
       if(caller == axon and is_seeded == false){
@@ -413,6 +519,12 @@ shared actor class Proxy(owner: Principal) = this {
       return #ok(true);
     };
 
+    /**
+    * Redenominates the token balance.
+    * @param {Nat} from - The previous denomination.
+    * @param {Nat} to - The new denomination.
+    * @returns {async} {Result.Result<Bool,Text>} - The result of redenomination.
+    */
     public shared({caller}) func redenominate(from: Nat, to: Nat) : async Result.Result<Bool,Text>{
       //todo: will break down if number of accounts data > 2MB
       assert(caller == axon);
@@ -470,7 +582,11 @@ shared actor class Proxy(owner: Principal) = this {
       return #ok(true);
     };
 
-
+    /**
+    * Updates the token information.
+    * @param {Object} request - The request object containing the updated information.
+    * @returns {async} {Result.Result<Bool,Text>} - The result of token information update.
+    */
     public shared({caller}) func update_token(request : {
       metadata: ?[(Text, ICRC1Types.Value)];
       _fee: ?Nat;
@@ -527,6 +643,11 @@ shared actor class Proxy(owner: Principal) = this {
       return #ok(true);
     };
 
+    /**
+    * Forces a refresh of balance for specified accounts.
+    * @param {Array<Principal>} request - The list of accounts to refresh balance.
+    * @returns {async} {Result.Result<Bool,Text>} - The result of balance refresh.
+    */
     public shared({caller}) func force_refresh_balance(request : [Principal]) : async Result.Result<Bool,Text>{
       assert(caller == Principal.fromActor(this)); //only a wallet can update its info from an axon canister command
 
