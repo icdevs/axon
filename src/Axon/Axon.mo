@@ -86,17 +86,31 @@ shared ({ caller = creator }) actor class AxonService() = this {
 
 
   // Returns a boolean indicating if the specified principal is an admin.
+  /**
+  * Checks if the specified principal is an admin.
+  * @param {Principal} p - The principal to check.
+  * @returns {async} {Bool} - Returns `true` if the principal is an admin, otherwise `false`.
+  */
   public query func is_admin(p : Principal) : async Bool {
     _Admins.isAdmin(state_current, p);
   };
 
   // Returns a list of all the admins.
+  /**
+  * Returns a list of all the admins.
+  * @returns {async} {Array<Principal>} - An array containing all the admins.
+  */
   public query ({ caller }) func get_admins() : async [Principal] {
     assert (_Admins.isAdmin(state_current, caller));
     _Admins.getAdmins(state_current);
   };
 
   // Adds the specified principal as an admin.
+  /**
+  * Adds the specified principal as an admin.
+  * @param {Principal} p - The principal to add as an admin.
+  * @returns {async} {void}
+  */
   public shared ({ caller }) func add_admin(p : Principal) : async () {
     assert (caller == master);
     //assert (_Admins.isAdmin(caller));
@@ -105,6 +119,10 @@ shared ({ caller = creator }) actor class AxonService() = this {
 
 
   // get cycles
+  /**
+  * Retrieves the current balance of cycles.
+  * @returns {async} {Nat} - The current balance of cycles.
+  */
   public query func cycles() : async Nat {
     Cycles.balance();
   };
@@ -126,6 +144,13 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   // Changes the master.
+  /**
+  * Updates the controller of an axon.
+  * This is needed for deletion purposes.
+  * @param {Principal} canisterId - The canister ID of the axon.
+  * @param {Principal} manager - The new manager's principal.
+  * @returns {async} {void}
+  */
   public shared ({ caller }) func update_master(p : Principal) : async () {
     assert (caller == master);
     //assert (_Admins.isAdmin(caller));
@@ -233,6 +258,10 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   //upgrades a proxy to the new actor type
+  /**
+ * Upgrades a proxy to the new actor type.
+ * @returns {async} {Array<Result<Bool, Text>>} - An array of results indicating the success or failure of the upgrade process for each axon.
+ */
   public shared ({ caller }) func upgradeProxy() : async [Result.Result<Bool,Text>] {
     assert (caller == master);
     let results = Buffer.Buffer<Result.Result<Bool,Text>>(0);
@@ -290,10 +319,21 @@ shared ({ caller = creator }) actor class AxonService() = this {
     });
   };
 
+/**
+ * Retrieves the public information of an axon by ID.
+ * @param {Nat} id - The ID of the axon.
+ * @returns {async} {AxonPublic} - The public information of the axon.
+ */
   public query func axonById(id: Nat) : async CurrentTypes.AxonPublic {
     let axon = SB.get(state_current.axons, id);
     getAxonPublic(axon)
   };
+
+/**
+ * Retrieves the public information of an axon by wallet address.
+ * @param {Principal} id - The wallet address of the axon.
+ * @returns {async} {?AxonPublic} - The public information of the axon, or null if not found.
+ */
 
   public query func axonByWallet(id: Principal) : async ?CurrentTypes.AxonPublic {
     for(thisAxon in SB.vals(state_current.axons)){
@@ -302,20 +342,42 @@ shared ({ caller = creator }) actor class AxonService() = this {
     return null;
   };
 
+/**
+ * Retrieves the status of an axon by ID.
+ * @param {Nat} id - The ID of the axon.
+ * @returns {async} {CanisterStatusResult} - The status of the axon.
+ */
   public shared func axonStatusById(id: Nat) : async IC.CanisterStatusResult {
     let axon = SB.get(state_current.axons, id);
     await ic.canister_status({ canister_id = Principal.fromActor(axon.proxy) });
   };
 
+/**
+ * Retrieves the neuron IDs associated with an axon.
+ * @param {Nat} id - The ID of the axon.
+ * @returns {async} {Array<Nat64>} - An array of neuron IDs.
+ */
+
   public query func getNeuronIds(id: Nat) : async [Nat64] {
     neuronIdsFromInfos(id)
   };
 
+/**
+ * Retrieves the balance of a given axon for a specific principal or caller.
+ * @param {Nat} id - The ID of the axon.
+ * @param {?Principal} principal - Optional. The principal for which to retrieve the balance. If null, the caller's balance is retrieved.
+ * @returns {async} {Nat} - The balance of the axon for the specified principal or caller.
+ */
   public query({ caller }) func balanceOf(id: Nat, principal: ?Principal) : async Nat {
     let {ledger} = SB.get(state_current.axons, id);
     Option.get(Map.get(ledger, phash, Option.get(principal, caller)), 0)
   };
 
+/**
+ * Retrieves the ledger entries of an axon by ID.
+ * @param {Nat} id - The ID of the axon.
+ * @returns {async} {Array<LedgerEntry>} - An array of ledger entries sorted in descending order by balance.
+ */
   public query({ caller }) func ledger(id: Nat) : async [CurrentTypes.LedgerEntry] {
     let {ledger} = SB.get(state_current.axons, id);
     // sort descending
@@ -327,6 +389,10 @@ shared ({ caller = creator }) actor class AxonService() = this {
   //---- Permissioned queries
 
   // Get axons where caller has balance
+  /**
+ * Retrieves the axons where the caller has a non-zero balance.
+ * @returns {async} {Array<AxonPublic>} - An array of axons where the caller has a balance.
+ */
   public query({ caller }) func myAxons() : async [CurrentTypes.AxonPublic] {
     Array.mapFilter<CurrentTypes.AxonFull, CurrentTypes.AxonPublic>(SB.toArray<CurrentTypes.AxonFull>(state_current.axons), func(axon) {
       switch (Map.get(axon.ledger, phash, caller)) {
@@ -339,6 +405,11 @@ shared ({ caller = creator }) actor class AxonService() = this {
     })
   };
 
+/**
+ * Retrieves the neurons associated with an axon.
+ * @param {Nat} id - The ID of the axon.
+ * @returns {async} {NeuronsResult} - The result containing the neurons associated with the axon.
+ */
   // Get all full neurons. If private, only owners can call
   public query({ caller }) func getNeurons(id: Nat) : async CurrentTypes.NeuronsResult {
     let { visibility; ledger; neurons } = SB.get(state_current.axons, id);
@@ -355,6 +426,12 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   // Get single proposal. If private, only owners can call
+  /**
+ * Retrieves a single proposal by ID.
+ * @param {Nat} axonId - The ID of the axon.
+ * @param {Nat} proposalId - The ID of the proposal.
+ * @returns {async} {Result<AxonProposalPublic>} - The result containing the public information of the proposal.
+ */
   public query({ caller }) func getProposalById(axonId: Nat, proposalId: Nat) : async CurrentTypes.Result<CurrentTypes.AxonProposalPublic> {
     let { visibility; ledger; activeProposals; allProposals } = SB.get(state_current.axons, axonId);
     if (visibility == #Private and not isAuthed(caller, ledger)) {
@@ -396,6 +473,11 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   // Get all active proposals. If private, only owners can call
+  /**
+ * Retrieves all active proposals of an axon.
+ * @param {Nat} id - The ID of the axon.
+ * @returns {async} {ProposalResult} - The result containing the public information of the active proposals.
+ */
   public query({ caller }) func getActiveProposals(id: Nat) : async CurrentTypes.ProposalResult {
     let { visibility; ledger; activeProposals } = SB.get(state_current.axons, id);
     if (visibility == #Private and not isAuthed(caller, ledger)) {
@@ -419,6 +501,12 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   // Get last 100 proposals, optionally before the specified id. If private, only owners can call
+  /**
+ * Retrieves the last 100 proposals of an axon, optionally before the specified ID.
+ * @param {Nat} id - The ID of the axon.
+ * @param {?Nat} before - Optional. The ID of the proposal to retrieve proposals before.
+ * @returns {async} {ProposalResult} - The result containing the public information of the proposals.
+ */
   public query({ caller }) func getAllProposals(id: Nat, before: ?Nat) : async CurrentTypes.ProposalResult {
     let { visibility; ledger; allProposals } = SB.get(state_current.axons, id);
     if (visibility == #Private and not isAuthed(caller, ledger)) {
@@ -457,6 +545,11 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   // Get all motion proposals
+  /**
+ * Retrieves all motion proposals of an axon.
+ * @param {Nat} id - The ID of the axon.
+ * @returns {async} {ProposalResult} - The result containing the public information of the motion proposals.
+ */
   public query({ caller }) func getMotionProposals(id: Nat) : async CurrentTypes.ProposalResult {
     let { visibility; ledger; allProposals } = SB.get(state_current.axons, id);
     if (visibility == #Private and not isAuthed(caller, ledger)) {
@@ -504,12 +597,22 @@ shared ({ caller = creator }) actor class AxonService() = this {
   //---- Updates
 
   // Accept cycles
+  /**
+ * Accepts cycles to the wallet.
+ * @returns {async} {Nat} - The amount of accepted cycles.
+ */
   public func wallet_receive() : async Nat {
     let amount = Cycles.available();
     Cycles.accept(amount);
   };
 
   // Accept cycles
+  /**
+ * Accepts cycles and recycles them for an axon.
+ * @param {Nat} axonId - The ID of the axon.
+ * @param {Nat} floor - The floor value.
+ * @returns {async} {Nat} - The amount of accepted cycles.
+ */
   public  shared(msg) func recycle_cycles(axonId: Nat, floor: Nat) : async Nat {
     assert (msg.caller == master);
     let axon = SB.get(state_current.axons, axonId);
@@ -517,6 +620,13 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   // Transfer tokens
+  /**
+  * Transfers tokens from one axon to another.
+  * @param {Nat} id - The ID of the axon.
+  * @param {Principal} dest - The destination principal.
+  * @param {Nat} amount - The amount of tokens to transfer.
+  * @returns {async} {Result} - The result of the token transfer operation.
+  */
   public shared({ caller }) func transfer(id: Nat, dest: Principal, amount: Nat) : async CurrentTypes.Result<()> {
     // Verify if token tranfers are allowed for members in the Axon policy
     assert tokenTransfersAllowed(id);
@@ -533,6 +643,11 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   // Create a new Axon
+  /**
+  * Creates a new axon.
+  * @param {Initialization} init - The initialization parameters for the axon.
+  * @returns {async} {Result<AxonPublic>} - The result containing the public information of the created axon.
+  */
   public shared({ caller }) func create(init: CurrentTypes.Initialization) : async CurrentTypes.Result<CurrentTypes.AxonPublic> {
     // Verify that the caller has the Administrator role
     assert (_Admins.isAdmin(state_current, caller));
@@ -577,6 +692,11 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   // Submit a new Axon proposal
+  /**
+ * Submits a new proposal for an axon.
+ * @param {NewProposal} request - The new proposal request.
+ * @returns {async} {Result<AxonProposalPublic>} - The result containing the public information of the created proposal.
+ */
   public shared({ caller }) func propose(request: CurrentTypes.NewProposal) : async CurrentTypes.Result<CurrentTypes.AxonProposalPublic> {
     let axon = SB.get(state_current.axons, request.axonId);
     if (not isAuthed(caller, axon.ledger)) {
@@ -700,6 +820,11 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   // Vote on an active proposal
+  /**
+ * Votes on an active proposal.
+ * @param {VoteRequest} request - The vote request.
+ * @returns {async} {Result} - The result of the vote operation.
+ */
   public shared({ caller }) func vote(request: CurrentTypes.VoteRequest) : async CurrentTypes.Result<()> {
     let axon = SB.get(state_current.axons, request.axonId);
     if (not isAuthed(caller, axon.ledger)) {
@@ -879,6 +1004,12 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   // Cancel an active proposal created by caller
+  /**
+ * Cancels an active proposal created by the caller.
+ * @param {Nat} axonId - The ID of the axon.
+ * @param {Nat} proposalId - The ID of the proposal.
+ * @returns {async} {Result<AxonProposalPublic>} - The result containing the public information of the canceled proposal.
+ */
   public shared({ caller }) func cancel(axonId: Nat, proposalId: Nat) : async CurrentTypes.Result<CurrentTypes.AxonProposalPublic> {
     let axon = SB.get(state_current.axons, axonId);
     if (not isAuthed(caller, axon.ledger)) {
@@ -934,6 +1065,12 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   // Queue proposal for execution
+  /**
+  * Queues a proposal for execution.
+  * @param {Nat} axonId - The ID of the axon.
+  * @param {Nat} proposalId - The ID of the proposal.
+  * @returns {async} {Result<AxonProposalPublic>} - The result containing the public information of the queued proposal.
+  */
   public shared({ caller }) func execute(axonId: Nat, proposalId: Nat) : async CurrentTypes.Result<CurrentTypes.AxonProposalPublic> {
     let axon = SB.get(state_current.axons, axonId);
     if (not isAuthed(caller, axon.ledger)) {
@@ -975,6 +1112,11 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   // Call list_neurons() and save the list of neurons that this axon's proxy controls
+  /**
+  * Calls list_neurons() and saves the list of neurons controlled by the axon's proxy.
+  * @param {Nat} id - The ID of the axon.
+  * @returns {async} {NeuronsResult} - The result containing the list of neurons and the timestamp.
+  */
   public shared({ caller }) func sync(id: Nat) : async CurrentTypes.NeuronsResult {
     let axon = SB.get(state_current.axons, id);
     if (axon.visibility == #Private and not isAuthed(caller, axon.ledger)) {
@@ -1037,6 +1179,12 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   // Update proposal statuses and move from active to all if needed. Called by sync
+  /**
+  * Updates the proposal statuses and moves them from active to all if needed.
+  * Called by the sync function.
+  * @param {Nat} axonId - The ID of the axon.
+  * @returns {async} {Result} - The result of the cleanup operation.
+  */
   public shared({ caller }) func cleanup(axonId: Nat) : async CurrentTypes.Result<()> {
     let axon = SB.get(state_current.axons, axonId);
     if (not isAuthed(caller, axon.ledger)) {
@@ -1093,7 +1241,13 @@ shared ({ caller = creator }) actor class AxonService() = this {
   // ---- Internal functions
 
   // Execute accepted proposal
-  func _doExecute(axonId: Nat, proposal: CurrentTypes.AxonProposal) : async CurrentTypes.AxonProposalPublic {
+  /**
+    * Executes an accepted proposal.
+    * @param {Nat} axonId - The ID of the axon.
+    * @param {AxonProposal} proposal - The proposal to execute.
+    * @returns {async} {AxonProposalPublic} - The public information of the executed proposal.
+    */
+  private func _doExecute(axonId: Nat, proposal: CurrentTypes.AxonProposal) : async CurrentTypes.AxonProposalPublic {
     switch (A.currentStatus(proposal.status)) {
       case (#ExecutionQueued(_)) {};
       // Trap if status is not ExecutionQueued
@@ -1199,7 +1353,13 @@ shared ({ caller = creator }) actor class AxonService() = this {
     }
   };
 
-  func _applyAxonCommand(axon: CurrentTypes.AxonFull, request: CurrentTypes.AxonCommandRequest) : async* CurrentTypes.Result<(Nat, CurrentTypes.AxonCommandExecution)> {
+  /**
+  * Applies an axon command to the axon's state.
+  * @param {AxonFull} axon - The full information of the axon.
+  * @param {AxonCommandRequest} request - The axon command request.
+  * @returns {async*} {Result<(Nat, AxonCommandExecution)>} - The result containing the ID of the axon and the execution result of the command.
+  */
+  private func _applyAxonCommand(axon: CurrentTypes.AxonFull, request: CurrentTypes.AxonCommandRequest) : async* CurrentTypes.Result<(Nat, CurrentTypes.AxonCommandExecution)> {
     switch(request) {
       case (#SetPolicy(policy)) {
         switch (policy.proposers) {
@@ -1639,6 +1799,13 @@ shared ({ caller = creator }) actor class AxonService() = this {
     };
   };
 
+  /**
+  * Attempts to retrieve an NNS proposal, tries up to 10 times.
+  * @param {Nat64} id - The ID of the proposal.
+  * @param {Nat} tries - The number of tries.
+  * @returns {async} {(Result<ProposalInfo>, Nat)} - The result containing the proposal information and the number of tries.
+  */
+
   // Attempt to retrieve NNS proposal, tries up to 10 times
   func _tryGetProposal(id: Nat64, tries: Nat): async (CurrentTypes.Result<?GT.ProposalInfo>, Nat) {
     try {
@@ -1656,6 +1823,11 @@ shared ({ caller = creator }) actor class AxonService() = this {
   // ---- Helpers
 
   // Returns true if the policy of an axon allows token transfers by members
+  /**
+  * Returns true if the policy of an axon allows token transfers by members.
+  * @param {Nat} id - The ID of the axon.
+  * @returns {Bool} - True if token transfers are allowed, false otherwise.
+  */
   func tokenTransfersAllowed(id : Nat) : Bool {
     let axon = SB.get(state_current.axons, id);
 
@@ -1667,6 +1839,12 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   // Returns true if the principal holds a balance in ledger, OR if it's this canister
+  /**
+  * Returns true if the principal holds a balance in the ledger or if it's this canister.
+  * @param {Principal} principal - The principal to check.
+  * @param {Ledger} ledger - The ledger of the axon.
+  * @returns {Bool} - True if the principal is authorized, false otherwise.
+  */
   func isAuthed(principal: Principal, ledger: CurrentTypes.Ledger) : Bool {
     principal == Principal.fromActor(this) or
     (switch (Map.get(ledger,phash, principal)) {
@@ -1694,6 +1872,11 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   // Return neuron IDs from stored neuron_infos
+  /**
+  * Returns the neuron IDs from the stored neuron infos.
+  * @param {Nat} id - The ID of the axon.
+  * @returns {Array<Nat64>} - The array of neuron IDs.
+  */
   func neuronIdsFromInfos(id: Nat) : [Nat64] {
     switch (SB.get(state_current.axons, id).neurons) {
       case (?{response={neuron_infos}}) {
@@ -1704,6 +1887,11 @@ shared ({ caller = creator }) actor class AxonService() = this {
   };
 
   // Return Axon with own balance
+  /**
+  * Returns the public information of the axon with its own balance.
+  * @param {AxonFull} axon - The full information of the axon.
+  * @returns {AxonPublic} - The public information of the axon.
+  */
   func getAxonPublic(axon: CurrentTypes.AxonFull): CurrentTypes.AxonPublic {
     {
       id = axon.id;
@@ -1718,10 +1906,28 @@ shared ({ caller = creator }) actor class AxonService() = this {
     }
   };
 
+  /**
+  * Converts seconds to nanoseconds.
+  * @param {Int} s - The number of seconds.
+  * @returns {Int} - The number of nanoseconds.
+  */
   func secsToNanos(s: Int): Int { 1_000_000_000 * s };
 
+  /**
+  * Clamps a number within a specified range.
+  * @param {Int} n - The number to clamp.
+  * @param {Int} lower - The lower bound of the range.
+  * @param {Int} upper - The upper bound of the range.
+  * @returns {Int} - The clamped number.
+  */
   func clamp(n: Int, lower: Int, upper: Int): Int { Int.min(Int.max(n, lower), upper) };
 
+
+  /**
+  * Creates an error object from an error.
+  * @param {Error} e - The error object.
+  * @returns {Error} - The error object.
+  */
   func makeError(e: Error): CurrentTypes.Error {
     #Error({
       error_message = Error.message(e);
