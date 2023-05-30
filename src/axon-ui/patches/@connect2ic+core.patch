@@ -1,5 +1,0 @@
---- a/node_modules/@connect2ic/core/dist/connect2ic-core.cjs.dev.js
-+++ b/node_modules/@connect2ic/core/dist/connect2ic-core.cjs.dev.js
-@@ -8
--const eventE3 = require('event-e3');
-+const eventE3 = import('event-e3');

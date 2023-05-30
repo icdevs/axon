@@ -18,7 +18,7 @@
   },
   "type": "module",
   "dependencies": {
-    "@connect2ic/react": "^0.1.4",
+    "@connect2ic/react": "^0.2.0-beta.5",
     "@dfinity/agent": "^0.15.6",
     "@dfinity/auth-client": "^0.15.6",
     "@dfinity/authentication": "^0.14.2",
@@ -33,6 +33,7 @@
     "ic-stoic-identity": "^2.0.0",
     "luxon": "^3.1.0",
     "next": "^13.4.4",
+    "next-transpile-modules": "^10.0.0",
     "node-fetch": "^2.6.11",
     "object-path-immutable": "^4.1.2",
     "react": "18.2.0",

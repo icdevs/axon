@@ -1,8 +1,12 @@
 import CanisterIds from "../../canister_ids.json" assert { type: "json" };
+import nextTranspile from "next-transpile-modules";
+
+const withTM = nextTranspile(["@connect2ic/core", "@connect2ic/react"]);
 
 const AXON_CANISTER_ID =
   process.env.NEXT_PUBLIC_DFX_NETWORK === "local"
-    ? import("../../.dfx/local/canister_ids.json").Axon.local
+    ? // REPLACE THIS
+      import("../../canister_ids.json").Axon.local
     : process.env.NEXT_PUBLIC_DFX_NETWORK === "staging"
     ? CanisterIds.staging.ic
     : process.env.NEXT_PUBLIC_DFX_NETWORK === "testic"
@@ -13,7 +17,7 @@ console.log(process.env.NEXT_PUBLIC_DFX_NETWORK);
 console.log(`NEXT_PUBLIC_DFX_NETWORK=${process.env.NEXT_PUBLIC_DFX_NETWORK}`);
 console.log(`AXON_CANISTER_ID=${AXON_CANISTER_ID}`);
 
-export default {
+export default withTM({
   typescript: {
     // !! WARN !!
     // Dangerously allow production builds to successfully complete even if
@@ -35,4 +39,4 @@ export default {
       },
     ];
   },
-};
+});
