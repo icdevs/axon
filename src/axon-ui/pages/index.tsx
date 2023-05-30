@@ -37,24 +37,22 @@ const Root: React.FC = () => {
   return (
     <div>
       <QueryClientProvider client={queryClient}>
-        <Store>
-          <Subscriptions />
-          <Head>
-            <title>{process.env.PAGE_TITLE}</title>
-          </Head>
-          <div
-            className="flex flex-col items-center"
-            style={{ backgroundColor: "#F7F3E9" }}
-          >
-            <div className="flex flex-col justify-between min-h-screen w-full sm:max-w-screen-lg px-4">
-              <main className="flex flex-col justify-start">
-                <Nav />
-                <Outlet />
-              </main>
-              <Footer />
-            </div>
+        <Subscriptions />
+        <Head>
+          <title>{process.env.PAGE_TITLE}</title>
+        </Head>
+        <div
+          className="flex flex-col items-center"
+          style={{ backgroundColor: "#F7F3E9" }}
+        >
+          <div className="flex flex-col justify-between min-h-screen w-full sm:max-w-screen-lg px-4">
+            <main className="flex flex-col justify-start">
+              <Nav />
+              <Outlet />
+            </main>
+            <Footer />
           </div>
-        </Store>
+        </div>
 
         {/* <ReactQueryDevtools initialIsOpen={false} /> */}
       </QueryClientProvider>

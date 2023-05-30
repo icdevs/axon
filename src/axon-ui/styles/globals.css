@@ -39,6 +39,9 @@ input[type="checkbox"] {
 .btn-secondary-disabled {
   @apply bg-gray-100 text-gray-300;
 }
+.connect-button {
+  @apply !bg-black !text-white hover:!bg-gray-500 !transition-colors !py-2 !px-4 !rounded-md hover:!scale-100;
+}
 .popup-form {
   display: flex;
   flex-flow: column;

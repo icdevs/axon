@@ -1,20 +1,11 @@
-import { HttpAgent } from "@dfinity/agent";
+import { Actor, Agent, HttpAgent } from "@dfinity/agent";
 import { Principal } from "@dfinity/principal";
 import React, { createContext, useContext, useEffect, useReducer } from "react";
-import { canisterId, createActor } from "../../declarations/Axon";
-import { defaultAgent } from "../../lib/canisters";
+import { CANISTER_NAME, defaultAgent } from "../../lib/canisters";
 import { AxonService } from "../../lib/types";
+import { useCanister, useConnect } from "@connect2ic/react";
 
 type Action =
-  | {
-      type: "SET_AGENT";
-      agent: HttpAgent | null;
-      isAuthed?: boolean;
-    }
-  | {
-      type: "SET_PRINCIPAL";
-      principal: Principal;
-    }
   | {
       type: "LOAD_PERSISTENT_STATE";
       value: State["persistent"];
@@ -26,19 +17,6 @@ type Action =
 
 const reducer = (state: State, action: Action) => {
   switch (action.type) {
-    case "SET_AGENT":
-      const agent = action.agent || defaultAgent;
-      return {
-        ...state,
-        agent,
-        axon: createActor(canisterId, agent),
-        isAuthed: !!action.isAuthed,
-      };
-    case "SET_PRINCIPAL":
-      return {
-        ...state,
-        principal: action.principal,
-      };
     case "LOAD_PERSISTENT_STATE":
       return {
         ...state,
@@ -56,7 +34,7 @@ const reducer = (state: State, action: Action) => {
 };
 
 type State = {
-  agent: HttpAgent;
+  agent: Agent;
   axon: AxonService;
   isAuthed: boolean;
   principal: Principal | null;
@@ -67,7 +45,7 @@ type State = {
 
 const initialState: State = {
   agent: defaultAgent,
-  axon: createActor(canisterId, defaultAgent),
+  axon: undefined,
   isAuthed: false,
   principal: null,
   persistent: {
@@ -82,6 +60,16 @@ const Context = createContext({
 
 const Store = ({ children }) => {
   const [state, dispatch] = useReducer(reducer, initialState);
+
+  // const { principal, isConnected } = useConnect();
+  // const [actor, res] = useCanister("gov");
+
+  // const connect2IcState = {
+  //   axon: actor as unknown as AxonService,
+  //   agent: Actor.agentOf(actor),
+  //   principal: Principal.fromText(principal),
+  //   isAuthed: isConnected,
+  // };
 
   useEffect(() => {
     try {
@@ -101,8 +89,14 @@ const Store = ({ children }) => {
     }
   }, [state.persistent]);
 
+  const aggregatedState = {
+    ...state,
+  };
+
   return (
-    <Context.Provider value={{ state, dispatch }}>{children}</Context.Provider>
+    <Context.Provider value={{ state: aggregatedState, dispatch }}>
+      {children}
+    </Context.Provider>
   );
 };
 
@@ -115,8 +109,7 @@ export const useGlobalContext = () => {
 };
 
 export const useAxon = () => {
-  const context = useGlobalContext();
-  return context.state.axon;
+  return undefined;
 };
 
 export const useHideZeroBalances = () => {

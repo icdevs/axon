@@ -1,5 +1,4 @@
 import { useQuery } from "react-query";
-import { governance } from "../../canisters";
 import { ONE_MINUTES_MS } from "../../constants";
 import {
   Action,
@@ -9,6 +8,7 @@ import {
   Status,
   Topic,
 } from "../../governance";
+import { useCanister } from "@connect2ic/react";
 
 export type ApiProposal = {
   action: Action;
@@ -56,6 +56,7 @@ export type ApiProposal = {
 // };
 
 export const useNnsPendingProposals = () => {
+  const [governance] = useCanister("gov");
   return useQuery(
     "nnsPendingProposals",
     async () => {

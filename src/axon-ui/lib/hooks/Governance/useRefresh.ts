@@ -1,9 +1,10 @@
 import { Principal } from "@dfinity/principal";
 import { useMutation } from "react-query";
-import { governance } from "../../canisters";
+// import { governance } from "../../canisters";
 import { governanceErrorToString, tryCall } from "../../utils";
 import useSync from "../Axon/useSync";
 import { useFindMemo } from "../Ledger/useFindMemo";
+import { useCanister } from "@connect2ic/react";
 
 export default function useRefresh({
   account,
@@ -12,6 +13,7 @@ export default function useRefresh({
   account: string;
   controller: Principal;
 }) {
+  const [governance] = useCanister("gov");
   const { mutate } = useSync();
   const { data: memo } = useFindMemo(account);
 
