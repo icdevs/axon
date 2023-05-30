@@ -1,5 +1,6 @@
 import { Actor } from "@dfinity/agent";
 import { idlFactory } from "./Axon.did.js";
+import { isLocalUrl } from "../../lib/utils";
 
 export const canisterId = process.env.AXON_CANISTER_ID;
 
@@ -11,7 +12,10 @@ export const canisterId = process.env.AXON_CANISTER_ID;
  */
 export const createActor = (canisterId, agent) => {
   // Fetch root key for certificate validation during development
-  if (process.env.NEXT_PUBLIC_DFX_NETWORK === "local") {
+  if (
+    process.env.NEXT_PUBLIC_DFX_NETWORK === "local" &&
+    isLocalUrl(agent._host.hostname)
+  ) {
     agent.fetchRootKey();
   }
 

@@ -4,7 +4,7 @@ import { canisterId, createActor } from "../declarations/Governance";
 export const HOST =
   process.env.NEXT_PUBLIC_DFX_NETWORK === "local"
     ? "http://localhost:8000"
-    : "https://ic0.app";
+    : "https://icp-api.io/";
 
 export const IDENTITY_PROVIDER =
   process.env.NEXT_PUBLIC_DFX_NETWORK === "local"

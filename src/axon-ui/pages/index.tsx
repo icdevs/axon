@@ -1,9 +1,8 @@
 import "balloon-css";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 import { Outlet } from "react-router-dom";
 import Head from "next/head";
-import "react";
-import React, { PropsWithChildren, useEffect } from "react";
+import React from "react";
 import { QueryClient, QueryClientProvider } from "react-query";
 import Footer from "../components/Layout/Footer";
 import Nav from "../components/Layout/Nav";
@@ -18,17 +17,10 @@ import ProposalPage from "./axon/[id]/proposal/[proposalId]";
 import NeuronPage from "./axon/[id]/neuron/[neuronId]";
 import Neurons from "../components/Neuron/Neurons";
 
-import { PlugWallet } from "@connect2ic/core/providers/plug-wallet";
-import { InfinityWallet } from "@connect2ic/core/providers/infinity-wallet";
-import { InternetIdentity } from "@connect2ic/core/providers/internet-identity";
-import { NFID } from "@connect2ic/core/providers/nfid";
-// import { StoicWallet } from "@connect2ic/core/provziders/stoic-wallet";
-import { createClient } from "@connect2ic/core";
-import { Connect2ICProvider } from "@connect2ic/react";
-import "@connect2ic/core/style.css";
-import * as governanceCanister from "../declarations/Governance";
-
-let client = null;
+import dynamic from "next/dynamic";
+const AppWrapper = dynamic(() => import("./AppWrapper"), {
+  ssr: false,
+});
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -108,27 +100,5 @@ export default function Index() {
     },
   ]);
 
-  useEffect(() => {
-    client = createClient({
-      canisters: {
-        governanceCanister,
-      },
-      providers: [
-        // new AstroX(),
-        // new StoicWallet(),
-        new PlugWallet(),
-        new InfinityWallet(),
-        new NFID(),
-        new InternetIdentity(),
-      ],
-    });
-  }, []);
-
-  return (
-    <div suppressHydrationWarning>
-      <Connect2ICProvider client={client}>
-        <RouterProvider router={router} />
-      </Connect2ICProvider>
-    </div>
-  );
+  return <AppWrapper router={router} />;
 }
