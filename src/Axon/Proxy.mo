@@ -123,7 +123,12 @@ shared actor class Proxy(owner: Principal) = this {
 
   
 
-  // Call list_neurons() and save the list of neurons that this canister controls
+  // Call list_neurons() and save the list of neurons that th
+    /**
+ * Calls the list_neurons() function and saves the list of neurons that this canister controls.
+ * @param {Principal} caller - The caller's principal.
+ * @returns {async} {ListNeuronsResponse} - The response containing the list of neurons.
+ */
   public shared({ caller }) func list_neurons() : async GT.ListNeuronsResponse {
     assert(caller == axon);
 
@@ -137,6 +142,12 @@ shared actor class Proxy(owner: Principal) = this {
     response;
   };
 
+  /**
+ * Manages a neuron by calling the manage_neuron() function.
+ * @param {ManageNeuron} args - The arguments for managing the neuron.
+ * @param {Principal} caller - The caller's principal.
+ * @returns {async} {ManageNeuronResponse} - The respone from managing the neuron.
+ */
   public shared({ caller }) func manage_neuron(args: GT.ManageNeuron) : async GT.ManageNeuronResponse {
     assert(caller == axon);
     await Governance.manage_neuron(args)
@@ -253,7 +264,15 @@ shared actor class Proxy(owner: Principal) = this {
       };
   };
 
-
+ /**
+  * Calls a canister function with raw parameters.
+  * @param {Principal} canister - The principal of the canister.
+  * @param {Text} functionName - The name of the function to call.
+  * @param {Blob} argumentBinary - The binary representation of the argument.
+  * @param {Nat} cycles - The amount of cycles to include in the call.
+  * @param {Principal} caller - The caller's principal.
+  * @returns {async} {Result.Result<Blob, Text>} - The result of the call.
+  */
   public shared({ caller }) func call_raw(canister: Principal, functionName: Text, argumentBinary: Blob, cycles: Nat) : async Result.Result<Blob, Text> {
     Debug.print(debug_show(axon) # " " # debug_show(caller) # " " # debug_show(owner));
     assert(caller == owner);
