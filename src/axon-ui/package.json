@@ -16,24 +16,24 @@
     "export": "next export",
     "copy:types": "rsync -avr ../../.dfx/$(echo ${DFX_NETWORK:-'**'})/canisters/Axon --exclude='assets/' --exclude='idl/' --exclude='*.wasm' --exclude='index.js' --delete declarations"
   },
+  "type": "module",
   "dependencies": {
-    "@connect2ic/core": "^0.2.0-beta.5",
-    "@connect2ic/react": "^0.2.0-beta.5",
-    "@dfinity/agent": "0.9.3",
-    "@dfinity/auth-client": "^0.9.3",
-    "@dfinity/authentication": "^0.9.3",
-    "@dfinity/candid": "0.9.3",
-    "@dfinity/identity": "^0.15.4",
-    "@dfinity/principal": "0.9.3",
-    "@dfinity/utils": "^0.0.5",
+    "@connect2ic/react": "^0.1.4",
+    "@dfinity/agent": "^0.15.6",
+    "@dfinity/auth-client": "^0.15.6",
+    "@dfinity/authentication": "^0.14.2",
+    "@dfinity/candid": "^0.15.6",
+    "@dfinity/identity": "^0.15.6",
+    "@dfinity/principal": "^0.15.6",
+    "@dfinity/utils": "^0.0.15",
     "@headlessui/react": "^1.7.4",
-    "@psychedelic/plug-connect": "^0.2.0",
     "@tailwindcss/forms": "^0.5.3",
     "balloon-css": "^1.2.0",
     "classnames": "^2.3.2",
     "ic-stoic-identity": "^2.0.0",
     "luxon": "^3.1.0",
-    "next": "13.0.4",
+    "next": "^13.4.4",
+    "node-fetch": "^2.6.11",
     "object-path-immutable": "^4.1.2",
     "react": "18.2.0",
     "react-dom": "18.2.0",
@@ -55,6 +55,6 @@
     "autoprefixer": "^10.4.13",
     "postcss": "^8.4.19",
     "tailwindcss": "^3.2.4",
-    "typescript": "^4.9.3"
+    "typescript": "^5.0.4"
   }
 }
