@@ -109,7 +109,8 @@ export const useGlobalContext = () => {
 };
 
 export const useAxon = () => {
-  return undefined;
+  const [actor] = useCanister(CANISTER_NAME.AXON_CANISTER);
+  return actor;
 };
 
 export const useHideZeroBalances = () => {
@@ -120,31 +121,6 @@ export const useHideZeroBalances = () => {
     context.dispatch({ type: "SET_HIDE_ZERO_BALANCES", value });
 
   return [state, dispatch] as const;
-};
-
-export const useSetAgent = () => {
-  const { dispatch } = useGlobalContext();
-
-  return async ({
-    agent,
-    isAuthed,
-  }: {
-    agent: HttpAgent;
-    isAuthed?: boolean;
-  }) => {
-    dispatch({ type: "SET_AGENT", agent, isAuthed });
-    if (isAuthed) {
-      const principal = await agent.getPrincipal();
-      console.log("authed", principal.toText());
-
-      dispatch({
-        type: "SET_PRINCIPAL",
-        principal,
-      });
-    } else {
-      dispatch({ type: "SET_PRINCIPAL", principal: null });
-    }
-  };
 };
 
 export default Store;
