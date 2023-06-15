@@ -9,6 +9,7 @@ import {
   Topic,
 } from "../../governance";
 import { useCanister } from "@connect2ic/react";
+import { CANISTER_NAME } from "../../canisters";
 
 export type ApiProposal = {
   action: Action;
@@ -56,7 +57,7 @@ export type ApiProposal = {
 // };
 
 export const useNnsPendingProposals = () => {
-  const [governance] = useCanister("gov");
+  const [governance] = useCanister(CANISTER_NAME.GOVERNANCE_CANISTER);
   return useQuery(
     "nnsPendingProposals",
     async () => {

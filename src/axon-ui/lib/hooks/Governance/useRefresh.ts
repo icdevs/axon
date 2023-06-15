@@ -5,6 +5,7 @@ import { governanceErrorToString, tryCall } from "../../utils";
 import useSync from "../Axon/useSync";
 import { useFindMemo } from "../Ledger/useFindMemo";
 import { useCanister } from "@connect2ic/react";
+import { CANISTER_NAME } from "../../canisters";
 
 export default function useRefresh({
   account,
@@ -13,7 +14,7 @@ export default function useRefresh({
   account: string;
   controller: Principal;
 }) {
-  const [governance] = useCanister("gov");
+  const [governance] = useCanister(CANISTER_NAME.GOVERNANCE_CANISTER);
   const { mutate } = useSync();
   const { data: memo } = useFindMemo(account);
 
