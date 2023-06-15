@@ -4,6 +4,7 @@ import { tryCall } from "../utils";
 
 export const useIsAdmin = () => {
   const axon = useAxon();
+
   console.log("Checked if Admin");
   return useQuery(
     "isAdmin",

@@ -1,23 +1,15 @@
-import { Actor, HttpAgent, ActorSubclass } from '@dfinity/agent';
-import {
-  IDL, InputBox, renderInput, renderValue
-} from '@dfinity/candid';
-import {Principal} from '@dfinity/principal'
-
+import { Actor, HttpAgent, ActorSubclass } from "@dfinity/agent";
+import { IDL, InputBox, renderInput, renderValue } from "@dfinity/candid";
+import { Principal } from "@dfinity/principal";
+import { isLocalUrl } from "./utils";
 
 declare var flamegraph: any;
 declare var d3: any;
 
-const names: Record<number,string> = {};
+const names: Record<number, string> = {};
 
-function is_local(agent: HttpAgent) {
-  // @ts-ignore
-  const hostname = agent._host.hostname;
-  return hostname === '127.0.0.1' || hostname.endsWith('localhost');
-}
-
-const agent = new HttpAgent({host: "https://ic0.app"});
-if (is_local(agent)) {
+const agent = new HttpAgent({ host: "https://icp-api.io/" });
+if (isLocalUrl(agent?._host?.hostname)) {
   agent.fetchRootKey();
 }
 
@@ -44,7 +36,10 @@ function getCanisterId(): Principal {
   throw new Error("Could not find the canister ID.");
 }
 
-export async function fetchActor(canisterId: Principal, maybeDid?: string): Promise<{actor: ActorSubclass, idl: any}> {
+export async function fetchActor(
+  canisterId: Principal,
+  maybeDid?: string
+): Promise<{ actor: ActorSubclass; idl: any }> {
   let js;
   if (maybeDid) {
     const source = window.atob(maybeDid);
@@ -52,38 +47,49 @@ export async function fetchActor(canisterId: Principal, maybeDid?: string): Prom
   } else {
     try {
       js = await getRemoteDidJs(canisterId);
-    } catch(err) {
+    } catch (err) {
       if (/no query method/.test(err)) {
         js = await getLocalDidJs(canisterId);
       } else {
-        throw(err);
+        throw err;
       }
     }
   }
   if (!js) {
-    throw new Error('Cannot fetch candid file');
+    throw new Error("Cannot fetch candid file");
   }
-  const dataUri = 'data:text/javascript;charset=utf-8,' + encodeURIComponent(js);
+  const dataUri =
+    "data:text/javascript;charset=utf-8," + encodeURIComponent(js);
   const candid: any = await eval('import("' + dataUri + '")');
   console.log(candid);
-  return {actor: Actor.createActor(candid.idlFactory, { agent, canisterId }), idl: candid.idlFactory};
+  return {
+    actor: Actor.createActor(candid.idlFactory, { agent, canisterId }),
+    idl: candid.idlFactory,
+  };
 }
 
 export function getProfilerActor(canisterId: Principal): ActorSubclass {
-  const profiler_interface: IDL.InterfaceFactory = ({ IDL }) => IDL.Service({
-    __get_profiling: IDL.Func([], [IDL.Vec(IDL.Tuple(IDL.Int32, IDL.Int64))], ['query']),
-    __get_names: IDL.Func([], [IDL.Vec(IDL.Nat8)], ['query']),
-    __get_cycles: IDL.Func([], [IDL.Int64], ['query']),
-  });
+  const profiler_interface: IDL.InterfaceFactory = ({ IDL }) =>
+    IDL.Service({
+      __get_profiling: IDL.Func(
+        [],
+        [IDL.Vec(IDL.Tuple(IDL.Int32, IDL.Int64))],
+        ["query"]
+      ),
+      __get_names: IDL.Func([], [IDL.Vec(IDL.Nat8)], ["query"]),
+      __get_cycles: IDL.Func([], [IDL.Int64], ["query"]),
+    });
   return Actor.createActor(profiler_interface, { agent, canisterId });
 }
 
-export async function getCycles(canisterId: Principal): Promise<bigint|undefined> {
+export async function getCycles(
+  canisterId: Principal
+): Promise<bigint | undefined> {
   try {
     const actor = getProfilerActor(canisterId);
-    const cycles = await actor.__get_cycles() as bigint;
+    const cycles = (await actor.__get_cycles()) as bigint;
     return cycles;
-  } catch(err) {
+  } catch (err) {
     return undefined;
   }
 }
@@ -91,22 +97,27 @@ export async function getCycles(canisterId: Principal): Promise<bigint|undefined
 export async function getNames(canisterId: Principal) {
   try {
     const actor = getProfilerActor(canisterId);
-    const blob = await actor.__get_names() as number[];
-  // @ts-ignore
-    const decoded = IDL.decode([IDL.Vec(IDL.Tuple(IDL.Nat16, IDL.Text))], Uint8Array.from(blob))[0] as Array<[number,string]>;
-    decoded.forEach(([id, name]) => names[id] = name);
-  } catch(err) {
+    const blob = (await actor.__get_names()) as number[];
+    // @ts-ignore
+    const decoded = IDL.decode(
+      [IDL.Vec(IDL.Tuple(IDL.Nat16, IDL.Text))],
+      Uint8Array.from(blob)
+    )[0] as Array<[number, string]>;
+    decoded.forEach(([id, name]) => (names[id] = name));
+  } catch (err) {
     console.log(err);
     return undefined;
   }
 }
 
-export async function getProfiling(canisterId: Principal): Promise<Array<[number, bigint]>|undefined> {
+export async function getProfiling(
+  canisterId: Principal
+): Promise<Array<[number, bigint]> | undefined> {
   try {
     const actor = getProfilerActor(canisterId);
-    const info = await actor.__get_profiling() as Array<[number, bigint]>;
+    const info = (await actor.__get_profiling()) as Array<[number, bigint]>;
     return info;
-  } catch(err) {
+  } catch (err) {
     console.log(err);
     return undefined;
   }
@@ -116,7 +127,7 @@ function decodeProfiling(input: Array<[number, bigint]>) {
   if (!input) {
     return [];
   }
-  const stack: Array<[number, bigint, any[]]> = [[0,BigInt(0),[]]];
+  const stack: Array<[number, bigint, any[]]> = [[0, BigInt(0), []]];
   let prev_id = undefined;
   let i = 1;
   for (const [id, cycles] of input) {
@@ -129,7 +140,9 @@ function decodeProfiling(input: Array<[number, bigint]>) {
         throw new Error("cannot pop empty stack");
       }
       if (pair[0] !== -id) {
-        throw new Error(`Exiting func ${-pair[0]}, but expect to exit func ${id}`);
+        throw new Error(
+          `Exiting func ${-pair[0]}, but expect to exit func ${id}`
+        );
       }
       const name = names[pair[0]] || `func_${pair[0]}`;
       const value: number = Number(cycles - pair[1]);
@@ -140,7 +153,7 @@ function decodeProfiling(input: Array<[number, bigint]>) {
       } else {
         result.push(node);
       }
-      stack[stack.length-1][2].push(...result);
+      stack[stack.length - 1][2].push(...result);
     }
     prev_id = id;
     i++;
@@ -160,18 +173,22 @@ async function renderFlameGraph(profiler: any) {
   const profiling = decodeProfiling(await profiler());
   //console.log(profiling);
   if (profiling) {
-    let div = document.createElement('div');
-    div.id = 'chart';
+    let div = document.createElement("div");
+    div.id = "chart";
     log(div);
     const chart = flamegraph().selfValue(false).sort(false).width(400);
-    const tip = flamegraph.tooltip.defaultFlamegraphTooltip().text((d:any) => `${d.data.name}: ${d.data.value} instrs`);
+    const tip = flamegraph.tooltip
+      .defaultFlamegraphTooltip()
+      .text((d: any) => `${d.data.name}: ${d.data.value} instrs`);
     chart.tooltip(tip);
     d3.select("#chart").datum(profiling).call(chart);
-    div.id = 'old-chart';
+    div.id = "old-chart";
   }
 }
 
-async function getLocalDidJs(canisterId: Principal): Promise<undefined | string> {
+async function getLocalDidJs(
+  canisterId: Principal
+): Promise<undefined | string> {
   const origin = window.location.origin;
   const url = `${origin}/_/candid?canisterId=${canisterId.toText()}&format=js`;
   const response = await fetch(url);
@@ -181,61 +198,88 @@ async function getLocalDidJs(canisterId: Principal): Promise<undefined | string>
   return response.text();
 }
 
-async function getRemoteDidJs(canisterId: Principal): Promise<undefined | string> {
-  const common_interface: IDL.InterfaceFactory = ({ IDL }) => IDL.Service({
-    __get_candid_interface_tmp_hack: IDL.Func([], [IDL.Text], ['query']),
+async function getRemoteDidJs(
+  canisterId: Principal
+): Promise<undefined | string> {
+  const common_interface: IDL.InterfaceFactory = ({ IDL }) =>
+    IDL.Service({
+      __get_candid_interface_tmp_hack: IDL.Func([], [IDL.Text], ["query"]),
+    });
+  const actor: ActorSubclass = Actor.createActor(common_interface, {
+    agent,
+    canisterId,
   });
-  const actor: ActorSubclass = Actor.createActor(common_interface, { agent, canisterId });
-  const candid_source = await actor.__get_candid_interface_tmp_hack() as string;
+  const candid_source =
+    (await actor.__get_candid_interface_tmp_hack()) as string;
   return didToJs(candid_source);
 }
 
-async function didToJs(candid_source: string, canisterId?: Principal): Promise<undefined | string> {
+async function didToJs(
+  candid_source: string,
+  canisterId?: Principal
+): Promise<undefined | string> {
   // call didjs canister
   const didjs_id = Principal.fromText("a4gq6-oaaaa-aaaab-qaa4q-cai");
-  const didjs_interface: IDL.InterfaceFactory = ({ IDL }) => IDL.Service({
-    did_to_js: IDL.Func([IDL.Text], [IDL.Opt(IDL.Text)], ['query']),
+  const didjs_interface: IDL.InterfaceFactory = ({ IDL }) =>
+    IDL.Service({
+      did_to_js: IDL.Func([IDL.Text], [IDL.Opt(IDL.Text)], ["query"]),
+    });
+  const didjs: ActorSubclass = Actor.createActor(didjs_interface, {
+    agent,
+    canisterId: didjs_id,
   });
-  const didjs: ActorSubclass = Actor.createActor(didjs_interface, { agent, canisterId: didjs_id });
   const js: any = await didjs.did_to_js(candid_source);
   console.log(js);
   if (!js[0]) {
     return undefined;
   }
-  return js[0];  
+  return js[0];
 }
 
-export function render(id: Principal, canister: ActorSubclass, profiling: bigint|undefined) {
-  document.getElementById('canisterId')!.innerText = `${id}`;
+export function render(
+  id: Principal,
+  canister: ActorSubclass,
+  profiling: bigint | undefined
+) {
+  document.getElementById("canisterId")!.innerText = `${id}`;
   let profiler;
   if (profiling) {
     log(`Wasm instructions executed ${profiling} instrs.`);
-    profiler = async () => { return await getProfiling(id) };
+    profiler = async () => {
+      return await getProfiling(id);
+    };
   }
-  const sortedMethods = Actor.interfaceOf(canister)._fields.sort(([a], [b]) => (a > b ? 1 : -1));
+  const sortedMethods = Actor.interfaceOf(canister)._fields.sort(([a], [b]) =>
+    a > b ? 1 : -1
+  );
   for (const [name, func] of sortedMethods) {
     renderMethod(canister, name, func, profiler);
   }
 }
 
-function renderMethod(canister: ActorSubclass, name: string, idlFunc: IDL.FuncClass, profiler: any) {
-  const item = document.createElement('li');
+function renderMethod(
+  canister: ActorSubclass,
+  name: string,
+  idlFunc: IDL.FuncClass,
+  profiler: any
+) {
+  const item = document.createElement("li");
   item.id = name;
 
-  const sig = document.createElement('div');
-  sig.className = 'signature';
+  const sig = document.createElement("div");
+  sig.className = "signature";
   sig.innerHTML = `<b>${name}</b>: ${idlFunc.display()}`;
   item.appendChild(sig);
 
-  const methodListItem = document.createElement('li');
-  const methodLink = document.createElement('a');
+  const methodListItem = document.createElement("li");
+  const methodLink = document.createElement("a");
   methodLink.innerText = name;
   methodLink.href = `#${name}`;
   methodListItem.appendChild(methodLink);
-  document.getElementById('methods-list')!.appendChild(methodListItem);
+  document.getElementById("methods-list")!.appendChild(methodListItem);
 
-  const inputContainer = document.createElement('div');
-  inputContainer.className = 'input-container';
+  const inputContainer = document.createElement("div");
+  inputContainer.className = "input-container";
   item.appendChild(inputContainer);
 
   const inputs: InputBox[] = [];
@@ -245,42 +289,42 @@ function renderMethod(canister: ActorSubclass, name: string, idlFunc: IDL.FuncCl
     inputbox.render(inputContainer);
   });
 
-  const buttonContainer = document.createElement('div');
-  buttonContainer.className = 'button-container';
+  const buttonContainer = document.createElement("div");
+  buttonContainer.className = "button-container";
 
-  const buttonQuery = document.createElement('button');
-  buttonQuery.className = 'btn';
-  if (idlFunc.annotations.includes('query')) {
-    buttonQuery.innerText = 'Query';
+  const buttonQuery = document.createElement("button");
+  buttonQuery.className = "btn";
+  if (idlFunc.annotations.includes("query")) {
+    buttonQuery.innerText = "Query";
   } else {
-    buttonQuery.innerText = 'Call';
+    buttonQuery.innerText = "Call";
   }
   buttonContainer.appendChild(buttonQuery);
 
-  const buttonRandom = document.createElement('button');
-  buttonRandom.className = 'btn random';
-  buttonRandom.innerText = 'Random';
+  const buttonRandom = document.createElement("button");
+  buttonRandom.className = "btn random";
+  buttonRandom.innerText = "Random";
   buttonContainer.appendChild(buttonRandom);
   item.appendChild(buttonContainer);
 
-  const resultDiv = document.createElement('div');
-  resultDiv.className = 'result';
-  const left = document.createElement('div');
-  left.className = 'left';
-  const right = document.createElement('div');
-  right.className = 'right';
+  const resultDiv = document.createElement("div");
+  resultDiv.className = "result";
+  const left = document.createElement("div");
+  left.className = "left";
+  const right = document.createElement("div");
+  right.className = "right";
 
-  const resultButtons = document.createElement('span');
-  resultButtons.className = 'result-buttons';
-  const buttonText = document.createElement('button');
-  buttonText.className = 'btn text-btn active';
-  buttonText.innerText = 'Text';
-  const buttonUI = document.createElement('button');
-  buttonUI.className = 'btn ui-btn';
-  buttonUI.innerText = 'UI';
-  const buttonJSON = document.createElement('button');
-  buttonJSON.className = 'btn json-btn';
-  buttonJSON.innerText = 'JSON';
+  const resultButtons = document.createElement("span");
+  resultButtons.className = "result-buttons";
+  const buttonText = document.createElement("button");
+  buttonText.className = "btn text-btn active";
+  buttonText.innerText = "Text";
+  const buttonUI = document.createElement("button");
+  buttonUI.className = "btn ui-btn";
+  buttonUI.innerText = "UI";
+  const buttonJSON = document.createElement("button");
+  buttonJSON.className = "btn json-btn";
+  buttonJSON.innerText = "JSON";
   const buttonsArray = [buttonText, buttonUI, buttonJSON];
 
   resultDiv.appendChild(resultButtons);
@@ -288,14 +332,14 @@ function renderMethod(canister: ActorSubclass, name: string, idlFunc: IDL.FuncCl
   resultDiv.appendChild(right);
   item.appendChild(resultDiv);
 
-  const list = document.getElementById('methods')!;
+  const list = document.getElementById("methods")!;
   list.append(item);
 
   async function call(args: any[]) {
-    left.className = 'left';
-    left.innerText = 'Waiting...';
-    right.innerText = '';
-    resultDiv.style.display = 'flex';
+    left.className = "left";
+    left.innerText = "Waiting...";
+    right.innerText = "";
+    resultDiv.style.display = "flex";
 
     const tStart = Date.now();
     const result = await canister[name](...args);
@@ -307,8 +351,8 @@ function renderMethod(canister: ActorSubclass, name: string, idlFunc: IDL.FuncCl
   const containers: HTMLDivElement[] = [];
   function callAndRender(args: any[]) {
     (async () => {
-      resultDiv.classList.remove('error');
-      const callResult = await call(args) as any;
+      resultDiv.classList.remove("error");
+      const callResult = (await call(args)) as any;
       let result: any;
       if (idlFunc.retTypes.length === 0) {
         result = [];
@@ -317,42 +361,49 @@ function renderMethod(canister: ActorSubclass, name: string, idlFunc: IDL.FuncCl
       } else {
         result = callResult;
       }
-      left.innerHTML = '';
+      left.innerHTML = "";
 
-      let activeDisplayType = '';
-      buttonsArray.forEach(button => {
-        if (button.classList.contains('active')) {
-          activeDisplayType = button.classList.value.replace(/btn (.*)-btn.*/g, '$1');
+      let activeDisplayType = "";
+      buttonsArray.forEach((button) => {
+        if (button.classList.contains("active")) {
+          activeDisplayType = button.classList.value.replace(
+            /btn (.*)-btn.*/g,
+            "$1"
+          );
         }
       });
       function setContainerVisibility(displayType: string) {
         if (displayType === activeDisplayType) {
-          return 'flex';
+          return "flex";
         }
-        return 'none';
+        return "none";
       }
       function decodeSpace(str: string) {
-        return str.replace(/&nbsp;/g, ' ');
+        return str.replace(/&nbsp;/g, " ");
       }
 
-      const textContainer = document.createElement('div');
-      textContainer.className = 'text-result';
+      const textContainer = document.createElement("div");
+      textContainer.className = "text-result";
       containers.push(textContainer);
-      textContainer.style.display = setContainerVisibility('text');
+      textContainer.style.display = setContainerVisibility("text");
       left.appendChild(textContainer);
-      const text = encodeStr(IDL.FuncClass.argsToString(idlFunc.retTypes, result));
+      const text = encodeStr(
+        IDL.FuncClass.argsToString(idlFunc.retTypes, result)
+      );
       textContainer.innerHTML = decodeSpace(text);
-      const showArgs = encodeStr(IDL.FuncClass.argsToString(idlFunc.argTypes, args));
+      const showArgs = encodeStr(
+        IDL.FuncClass.argsToString(idlFunc.argTypes, args)
+      );
       log(decodeSpace(`› ${name}${showArgs}`));
       if (profiler) {
         await renderFlameGraph(profiler);
       }
       log(decodeSpace(text));
 
-      const uiContainer = document.createElement('div');
-      uiContainer.className = 'ui-result';
+      const uiContainer = document.createElement("div");
+      uiContainer.className = "ui-result";
       containers.push(uiContainer);
-      uiContainer.style.display = setContainerVisibility('ui');
+      uiContainer.style.display = setContainerVisibility("ui");
       left.appendChild(uiContainer);
       idlFunc.retTypes.forEach((arg, ind) => {
         const box = renderInput(arg);
@@ -360,17 +411,21 @@ function renderMethod(canister: ActorSubclass, name: string, idlFunc: IDL.FuncCl
         renderValue(arg, box, result[ind]);
       });
 
-      const jsonContainer = document.createElement('div');
-      jsonContainer.className = 'json-result';
+      const jsonContainer = document.createElement("div");
+      jsonContainer.className = "json-result";
       containers.push(jsonContainer);
-      jsonContainer.style.display = setContainerVisibility('json');
+      jsonContainer.style.display = setContainerVisibility("json");
       left.appendChild(jsonContainer);
-      jsonContainer.innerText = JSON.stringify(callResult, (k,v) => typeof v === 'bigint'?v.toString():v);
-    })().catch(err => {
-      resultDiv.classList.add('error');
+      jsonContainer.innerText = JSON.stringify(callResult, (k, v) =>
+        typeof v === "bigint" ? v.toString() : v
+      );
+    })().catch((err) => {
+      resultDiv.classList.add("error");
       left.innerText = err.message;
       if (profiler) {
-        const showArgs = encodeStr(IDL.FuncClass.argsToString(idlFunc.argTypes, args));
+        const showArgs = encodeStr(
+          IDL.FuncClass.argsToString(idlFunc.argTypes, args)
+        );
         log(`[Error] ${name}${showArgs}`);
         renderFlameGraph(profiler);
       }
@@ -380,29 +435,31 @@ function renderMethod(canister: ActorSubclass, name: string, idlFunc: IDL.FuncCl
 
   function selectResultDisplay(event: MouseEvent) {
     const target = event.target as HTMLButtonElement;
-    const displayType = target.classList.value.replace(/btn (.*)-btn.*/g, '$1');
-    buttonsArray.forEach(button => button.classList.remove('active'));
-    containers.forEach(container => (container.style.display = 'none'));
-    target.classList.add('active');
-    (left.querySelector(`.${displayType}-result`) as HTMLDivElement).style.display = 'flex';
+    const displayType = target.classList.value.replace(/btn (.*)-btn.*/g, "$1");
+    buttonsArray.forEach((button) => button.classList.remove("active"));
+    containers.forEach((container) => (container.style.display = "none"));
+    target.classList.add("active");
+    (
+      left.querySelector(`.${displayType}-result`) as HTMLDivElement
+    ).style.display = "flex";
   }
-  buttonsArray.forEach(button => {
-    button.addEventListener('click', selectResultDisplay);
+  buttonsArray.forEach((button) => {
+    button.addEventListener("click", selectResultDisplay);
     resultButtons.appendChild(button);
   });
 
-  buttonRandom.addEventListener('click', () => {
-    const args = inputs.map(arg => arg.parse({ random: true }));
-    const isReject = inputs.some(arg => arg.isRejected());
+  buttonRandom.addEventListener("click", () => {
+    const args = inputs.map((arg) => arg.parse({ random: true }));
+    const isReject = inputs.some((arg) => arg.isRejected());
     if (isReject) {
       return;
     }
     callAndRender(args);
   });
 
-  buttonQuery.addEventListener('click', () => {
-    const args = inputs.map(arg => arg.parse());
-    const isReject = inputs.some(arg => arg.isRejected());
+  buttonQuery.addEventListener("click", () => {
+    const args = inputs.map((arg) => arg.parse());
+    const isReject = inputs.some((arg) => arg.isRejected());
     if (isReject) {
       return;
     }
@@ -412,21 +469,21 @@ function renderMethod(canister: ActorSubclass, name: string, idlFunc: IDL.FuncCl
 
 function encodeStr(str: string) {
   const escapeChars: Record<string, string> = {
-    ' ': '&nbsp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '\n': '<br>',
+    " ": "&nbsp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\n": "<br>",
   };
-  const regex = new RegExp('[ <>\n]', 'g');
-  return str.replace(regex, m => {
+  const regex = new RegExp("[ <>\n]", "g");
+  return str.replace(regex, (m) => {
     return escapeChars[m];
   });
 }
 
 function log(content: Element | string) {
-  const outputEl = document.getElementById('output-list')!;
-  const line = document.createElement('div');
-  line.className = 'output-line';
+  const outputEl = document.getElementById("output-list")!;
+  const line = document.createElement("div");
+  line.className = "output-line";
   if (content instanceof Element) {
     line.appendChild(content);
   } else {

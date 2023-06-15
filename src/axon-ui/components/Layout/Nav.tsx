@@ -4,8 +4,8 @@ import { useBalance } from "../../lib/hooks/Axon/useBalance";
 import useAxonId from "../../lib/hooks/useAxonId";
 import { formatNumber } from "../../lib/utils";
 import IdentifierLabelWithButtons from "../Buttons/IdentifierLabelWithButtons";
-import LoginButton from "../Buttons/LoginButton";
 import { useGlobalContext } from "../Store/Store";
+import { Connect2ICButton } from "../Buttons/Connect2ICButton";
 
 export default function Nav() {
   const {
@@ -17,7 +17,10 @@ export default function Nav() {
   return (
     <nav className="py-4 flex flex-col sm:flex-row items-center justify-between border-b border-black border-opacity-10">
       <Link to="/">
-        <img src={`/img/${process.env.LOGO_ICON}`} className="h-12 cursor-pointer" />
+        <img
+          src={`/img/${process.env.LOGO_ICON}`}
+          className="h-12 cursor-pointer"
+        />
       </Link>
       <div className="flex items-center gap-4">
         {principal && !principal.isAnonymous() && (
@@ -30,7 +33,10 @@ export default function Nav() {
             />
 
             {id && (
-              <Link to={`/axon/${id}/ledger`} className="text-right hover:underline">
+              <Link
+                to={`/axon/${id}/ledger`}
+                className="text-right hover:underline"
+              >
                 <>
                   <strong>{formatNumber(balance || 0)}</strong> AXON_{id}
                 </>
@@ -38,7 +44,7 @@ export default function Nav() {
             )}
           </div>
         )}
-        <LoginButton />
+        {global.window && <Connect2ICButton />}
       </div>
     </nav>
   );
